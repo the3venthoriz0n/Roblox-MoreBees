@@ -1,7 +1,7 @@
 local StarterGui = game:GetService("StarterGui")
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
 
-print("Client script loaded Rojo!")
+print("Client script loaded Rojo OG!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -160,28 +160,3 @@ player.CharacterAdded:Connect(function()
         beeGui.Parent = player.PlayerGui
     end
 end)
-
--- Create GUI
-local function createBeeSpawnerGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "BeeSpawnerGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0.5, -100, 0.9, -25)
-    button.Text = "Spawn Bee"
-    button.Parent = screenGui
-
-    -- Fire RemoteEvent when button is clicked
-    local spawnEvent = ReplicatedStorage:WaitForChild("SpawnBee")
-    button.MouseButton1Click:Connect(function()
-        spawnEvent:FireServer()
-    end)
-end
-
--- Only create if not already present
-if not player.PlayerGui:FindFirstChild("BeeSpawnerGui") then
-    createBeeSpawnerGui()
-end

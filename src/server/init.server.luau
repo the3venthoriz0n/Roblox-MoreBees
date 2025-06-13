@@ -1,12 +1,14 @@
-print("Hello world, from Rojo Server!")
+print("Hello world, from Rojo Server OG!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
 
+print("Services initialized")
+
 -- Debug control
-local Debug = false -- Set to true to enable debug prints
+local Debug = true -- Set to true to enable debug prints
 
 -- Debug print function
 local function debugPrint(...)
@@ -14,6 +16,8 @@ local function debugPrint(...)
         print(...)
     end
 end
+
+debugPrint("Debug mode enabled")
 
 -- Spawn control
 local swarm = false -- Set to true to enable bee swarming behavior
@@ -43,40 +47,30 @@ setupCollisionGroups()
 
 print("Server script starting...")
 
--- Function to create and spawn a flying bee that follows the closest player
+-- Function to create and spawn a flying cube that follows the closest player
 local function createFlyingCube()
-    debugPrint("Attempting to create flying bee...")
-    
-    -- Get the bee model from ReplicatedStorage
-    local beeModel = ReplicatedStorage:FindFirstChild("BeeModel")
-    if not beeModel then
-        warn("Bee model not found in ReplicatedStorage! Please add a bee model named 'BeeModel' to ReplicatedStorage.")
-        return nil
-    end
-    
-    -- Clone the bee model
-    local bee = beeModel:Clone()
-    bee.Name = "FlyingBee"
-    
+    debugPrint("Attempting to create flying cube...")
+    local cube = Instance.new("Part")
+    cube.Name = "FlyingCube"
+    cube.Size = Vector3.new(3, 3, 3)
+    cube.Anchored = false
+    cube.CanCollide = true -- Cubes still collide with players and other default parts
+
     -- Add IsAlive status
     local isAlive = Instance.new("IntValue")
     isAlive.Name = "IsAlive"
     isAlive.Value = 1 -- 1 for alive, 0 for dead
-    isAlive.Parent = bee
-    
+    isAlive.Parent = cube
+
     -- Aggravation Radius
-    local aggravationRadius = 25 -- Bees will only attack if player is within 25 studs
-    
+    local aggravationRadius = 25 -- Cubes will only attack if player is within 50 studs
+
     -- BodyMover Multiplier
     local BODY_MOVER_MULTIPLIER = 1000 -- Multiply P and D values by this to work with smaller numbers
-    
-    -- Assign all parts to the flying collision group
-    for _, part in ipairs(bee:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CollisionGroup = CUBE_COLLISION_GROUP
-        end
-    end
-    
+
+    -- Assign cube to its collision group
+    cube.CollisionGroup = CUBE_COLLISION_GROUP
+
     -- Find the BeeHive and set spawn position
     local spawnPosition = Vector3.new(0, 25, 0) -- Default spawn if BeeHive not found or no PrimaryPart
     local beeHive = workspace:FindFirstChild("BeeHive")
@@ -103,49 +97,42 @@ local function createFlyingCube()
     else
         warn("BeeHive model not found. Spawning at default position.")
     end
-    
-    -- Position the bee
-    if bee.PrimaryPart then
-        bee:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
-    else
-        warn("Bee model has no PrimaryPart! Movement may not work correctly.")
-        bee:PivotTo(CFrame.new(spawnPosition))
-    end
-    
-    bee.Parent = workspace
-    debugPrint("Flying bee created and parented to workspace at: " .. tostring(spawnPosition))
-    
+
+    cube.Position = spawnPosition
+    cube.Parent = workspace
+    debugPrint("Flying cube created and parented to workspace at: " .. tostring(spawnPosition))
+
     local originalSpawnPosition = spawnPosition -- Store the initial spawn position
-    
-    -- Add BodyPosition and BodyGyro for flying
-    local bodyPosition = Instance.new("BodyPosition")
-    bodyPosition.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+
+-- Add BodyPosition and BodyGyro for flying
+local bodyPosition = Instance.new("BodyPosition")
+bodyPosition.MaxForce = Vector3.new(1e6, 1e6, 1e6)
     bodyPosition.P = 10 * BODY_MOVER_MULTIPLIER -- Increased P for more aggressive movement
     bodyPosition.D = 1 * BODY_MOVER_MULTIPLIER -- Reduced D to prevent slowing down
-    bodyPosition.Position = bee.PrimaryPart and bee.PrimaryPart.Position or spawnPosition
-    bodyPosition.Parent = bee.PrimaryPart or bee
-    
-    local bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+    bodyPosition.Position = cube.Position
+    bodyPosition.Parent = cube
+
+local bodyGyro = Instance.new("BodyGyro")
+bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
     bodyGyro.P = 10 * BODY_MOVER_MULTIPLIER -- Increased P for faster turning
     bodyGyro.D = 1 * BODY_MOVER_MULTIPLIER -- Reduced D to prevent slowing down
-    bodyGyro.CFrame = bee.PrimaryPart and bee.PrimaryPart.CFrame or CFrame.new(spawnPosition)
-    bodyGyro.Parent = bee.PrimaryPart or bee
+    bodyGyro.CFrame = cube.CFrame
+    bodyGyro.Parent = cube
 
-    -- Function to find the closest player
-    local function getClosestPlayer()
-        local closest, closestDist
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (bee.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                if not closestDist or dist < closestDist then
-                    closest = player
-                    closestDist = dist
-                end
+-- Function to find the closest player
+local function getClosestPlayer()
+    local closest, closestDist
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local dist = (cube.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            if not closestDist or dist < closestDist then
+                closest = player
+                closestDist = dist
             end
         end
-        return closest
     end
+    return closest
+end
 
     local randomTargetPosition = Vector3.new(0, 0, 0)
     local function generateRandomTarget()
@@ -159,14 +146,14 @@ local function createFlyingCube()
     end
     generateRandomTarget() -- Initial random target
 
-    -- Make the bee follow the closest player and avoid other bees
+    -- Make the cube follow the closest player and avoid other cubes
     local isAttacking = false
     local connection
     local angerLevel = 0
     local isAngry = false
 
     connection = RunService.Heartbeat:Connect(function(dt) -- dt passed as argument
-        if not bee.Parent then
+        if not cube.Parent then
             if connection then connection:Disconnect() end
             return
         end
@@ -177,13 +164,13 @@ local function createFlyingCube()
             playerRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         end
 
-        local currentTargetPos = bee.Position -- Default to current position (hover)
+        local currentTargetPos = cube.Position -- Default to current position (hover)
         local shouldAttackPlayer = false -- Final decision flag for attacking
         local distanceToPlayer = math.huge -- Initialize to a large number
 
         -- ANGER LOGIC & STATE UPDATE
         if targetPlayer and playerRootPart then -- Only process anger if a valid player target exists
-            distanceToPlayer = (bee.Position - playerRootPart.Position).Magnitude
+            distanceToPlayer = (cube.Position - playerRootPart.Position).Magnitude
             if distanceToPlayer <= aggravationRadius then
                 angerLevel = math.min(100, angerLevel + 50 * dt) -- Increased anger gain
                 -- print("Anger (in range): " .. string.format("%.2f", angerLevel) .. ", isAngry: " .. tostring(isAngry))
@@ -194,20 +181,20 @@ local function createFlyingCube()
 
             if angerLevel >= 1 then -- User's change from 100 to 1 makes it instantly angry
                 if not isAngry then 
-                    debugPrint("Bee " .. bee.Name .. " is now ANGRY!")
+                    debugPrint("Cube " .. cube.Name .. " is now ANGRY!")
                     -- Spawn an additional calm bee when this one becomes angry (only if swarm is enabled)
                     if swarm then
                         task.spawn(function()
                             local newBee = createFlyingCube()
                             if newBee then
                                 debugPrint("Spawned additional calm bee due to anger!")
-                            end
-                        end)
+    end
+end)
                     end
                 end
                 isAngry = true
             elseif angerLevel <= 0 then
-                if isAngry then debugPrint("Bee " .. bee.Name .. " is no longer angry.") end -- Debug print only on transition
+                if isAngry then debugPrint("Cube " .. cube.Name .. " is no longer angry.") end -- Debug print only on transition
                 isAngry = false
             end
         else -- No valid player target found
@@ -221,7 +208,7 @@ local function createFlyingCube()
         -- DECIDE TARGETING BEHAVIOR
         if isAngry and targetPlayer and playerRootPart then
             shouldAttackPlayer = true
-            -- print("Bee " .. bee.Name .. " force attacking due to anger!")
+            -- print("Cube " .. cube.Name .. " force attacking due to anger!")
         elseif (targetPlayer and playerRootPart) and (not isAngry) and (distanceToPlayer <= aggravationRadius) then
             -- This condition is already implicitly handled by anger gain if player is in range
             -- and `angerLevel >= 1` is also implicitly making them angry and attack. No need for separate isCurrentlyAttackingPlayer flag here.
@@ -240,7 +227,7 @@ local function createFlyingCube()
             currentTargetPos = baseTarget + attackOffset
         else
             -- Wander mode: move towards random target
-            if (bee.Position - randomTargetPosition).Magnitude < 10 then
+            if (cube.Position - randomTargetPosition).Magnitude < 10 then
                 generateRandomTarget()
             end
             currentTargetPos = randomTargetPosition
@@ -249,8 +236,8 @@ local function createFlyingCube()
         -- SEPARATION & LIVELINESS (always applies)
         local separation = Vector3.new(0, 0, 0)
         for _, other in ipairs(workspace:GetChildren()) do
-            if other ~= bee and other.Name == "FlyingBee" and other:IsA("BasePart") then
-                local offset = bee.Position - other.Position
+            if other ~= cube and other.Name == "FlyingCube" and other:IsA("BasePart") then
+                local offset = cube.Position - other.Position
                 local dist = offset.Magnitude
                 if dist < 4 and dist > 0 then
                     separation = separation + (offset.Unit * (4 - dist))
@@ -267,21 +254,21 @@ local function createFlyingCube()
         currentTargetPos = currentTargetPos + randomOffset
 
         bodyPosition.Position = currentTargetPos
-        bodyGyro.CFrame = CFrame.lookAt(bee.Position, currentTargetPos)
+        bodyGyro.CFrame = CFrame.lookAt(cube.Position, currentTargetPos)
     end)
 
     -- Damage logic: sting player on touch
     local lastStingTimes = {}
-    local isBeeDead = false -- Flag to ensure the bee only "dies" once after stinging
+    local isCubeDead = false -- Flag to ensure the cube only "dies" once after stinging
 
-    bee.Touched:Connect(function(hit)
-        if isBeeDead then return end -- Don't sting or die if already dead
+    cube.Touched:Connect(function(hit)
+        if isCubeDead then return end -- Don't sting or die if already dead
 
         local character = hit.Parent
         if character and character:FindFirstChild("Humanoid") then
             local player = Players:GetPlayerFromCharacter(character)
             if player then
-                debugPrint("Bee touched player:", player.Name)
+                debugPrint("Cube touched player:", player.Name)
                 local now = tick()
                 local lastSting = lastStingTimes[player] or 0
                 if now - lastSting > 1 then
@@ -291,21 +278,21 @@ local function createFlyingCube()
                         debugPrint("Stinging player for 20 damage!")
                         humanoid:TakeDamage(20)
 
-                        -- Bee "dies" after stinging
-                        isBeeDead = true
+                        -- Cube "dies" after stinging
+                        isCubeDead = true
                         isAlive.Value = 0 -- Mark as dead
                         if bodyPosition then bodyPosition:Destroy() end
                         if bodyGyro then bodyGyro:Destroy() end
                         if connection then connection:Disconnect() end -- Disconnect Heartbeat
-                        bee.CanCollide = true -- Ensure it can collide with the ground
+                        cube.CanCollide = true -- Ensure it can collide with the ground
                         -- Optional: Change color to indicate it's dead
-                        bee.BrickColor = BrickColor.new("Dark stone grey")
-                        bee.Transparency = 0.5
+                        cube.BrickColor = BrickColor.new("Dark stone grey")
+                        cube.Transparency = 0.5
 
                         -- Update the bee count display immediately after a bee "dies"
                         beeCountDisplay.Value = "Bees: " .. getBeeCount()
 
-                        -- Chance to spawn a new bee when this one "dies" (only if swarm is enabled)
+                        -- Chance to spawn a new cube when this one "dies" (only if swarm is enabled)
                         if swarm then
                             local spawnChance = 50 -- 50% chance
                             if math.random(1, 100) <= spawnChance then
@@ -318,7 +305,7 @@ local function createFlyingCube()
         end
     end)
 
-    return bee
+    return cube
 end
 
 -- Create a folder in ReplicatedStorage for scores
@@ -419,23 +406,41 @@ end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 
--- Add RemoteEvent for spawning bees from client
-local spawnBeeEvent = Instance.new("RemoteEvent")
-spawnBeeEvent.Name = "SpawnBee"
-spawnBeeEvent.Parent = ReplicatedStorage
+-- Create a StringValue in ReplicatedStorage to display current bee count
+local beeCountDisplay = Instance.new("StringValue")
+beeCountDisplay.Name = "BeeCountDisplay"
+beeCountDisplay.Value = "Bees: 0"
+beeCountDisplay.Parent = ReplicatedStorage
+
+-- Function to get current bee count
+local function getBeeCount()
+    local count = 0
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj.Name == "FlyingCube" and obj:FindFirstChild("IsAlive") and obj.IsAlive.Value == 1 then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- Add RemoteEvent for spawning cubes from client
+local spawnCubeEvent = Instance.new("RemoteEvent")
+spawnCubeEvent.Name = "SpawnCube"
+spawnCubeEvent.Parent = ReplicatedStorage
 
 -- Listen for spawn requests from client
-spawnBeeEvent.OnServerEvent:Connect(function(player)
+spawnCubeEvent.OnServerEvent:Connect(function(player)
     createFlyingCube()
     beeCountDisplay.Value = "Bees: " .. getBeeCount() -- Update count immediately after manual spawn
 end)
 
--- Spawn the first bee when the game starts
-print("Starting flying bee spawn...")
+-- Spawn the first cube when the game starts
+print("Starting flying cube spawn...")
 createFlyingCube()
 beeCountDisplay.Value = "Bees: " .. getBeeCount() -- Update count immediately after initial spawn
 
 -- Create a spawn button
+print("Creating spawn button...")
 local spawnButton = Instance.new("Part")
 spawnButton.Name = "BeeSpawnButton"
 spawnButton.Size = Vector3.new(4, 4, 4) -- Cube shape
@@ -445,6 +450,7 @@ spawnButton.CanCollide = true
 spawnButton.BrickColor = BrickColor.new("New Yeller") -- Changed to yellow
 spawnButton.Material = Enum.Material.Neon
 spawnButton.Parent = workspace
+print("Spawn button created and parented to workspace")
 
 -- Add ProximityPrompt for interaction
 local prompt = Instance.new("ProximityPrompt")
@@ -521,6 +527,7 @@ prompt.Triggered:Connect(function(player)
 end)
 
 -- Create a health pack
+print("Creating health pack...")
 local healthPack = Instance.new("Part")
 healthPack.Name = "HealthPack"
 healthPack.Size = Vector3.new(2, 2, 2) -- Smaller than the spawn button
@@ -529,6 +536,7 @@ healthPack.Anchored = true
 healthPack.CanCollide = true
 healthPack.BrickColor = BrickColor.new("Really red")
 healthPack.Material = Enum.Material.Neon
+print("Health pack created")
 
 -- Add a white stripe to the health pack
 local stripe = Instance.new("Part")
@@ -632,23 +640,6 @@ end)
 -- Add global spawn state
 -- local swarm = true -- Start with swarm enabled -- REMOVED due to re-declaration
 
--- Create a StringValue in ReplicatedStorage to display current bee count
-local beeCountDisplay = Instance.new("StringValue")
-beeCountDisplay.Name = "BeeCountDisplay"
-beeCountDisplay.Value = "Bees: 0"
-beeCountDisplay.Parent = ReplicatedStorage
-
--- Function to get current bee count
-local function getBeeCount()
-    local count = 0
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj.Name == "FlyingBee" and obj:FindFirstChild("IsAlive") and obj.IsAlive.Value == 1 then
-            count = count + 1
-        end
-    end
-    return count
-end
-
 -- Function to get minimum required bees
 local function getMinRequiredBees()
     local playerCount = 0
@@ -684,13 +675,15 @@ local function startAutoSpawner()
 end
 
 -- Start the auto spawner only after a short delay to ensure Players service is ready
+print("Starting auto spawner...")
 task.delay(1, function()
     task.spawn(startAutoSpawner)
+    print("Auto spawner started")
 end)
 
 -- Listen for bees being removed from the workspace to update the count immediately
 workspace.ChildRemoved:Connect(function(child)
-    if child.Name == "FlyingBee" then
+    if child.Name == "FlyingCube" then
         beeCountDisplay.Value = "Bees: " .. getBeeCount()
     end
 end)

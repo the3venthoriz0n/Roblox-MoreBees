@@ -2,6 +2,9 @@
     "folders": [
 		{
 			"path": "X:/Misc/_Dev/Roblox-MoreBees"
+		},
+		{
+			"path": ".."
 		}
 	]
 }
