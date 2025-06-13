@@ -528,50 +528,50 @@ end)
 
 -- Create a health pack
 print("Creating health pack...")
-local healthPack = Instance.new("Part")
+local healthPack = ReplicatedStorage:FindFirstChild("HoneyDipper")
+if not healthPack then
+    warn("HoneyDipper model not found in ReplicatedStorage! Please add the HoneyDipper model to ReplicatedStorage.")
+    return
+end
+
+-- Clone the HoneyDipper model
+healthPack = healthPack:Clone()
 healthPack.Name = "HealthPack"
-healthPack.Size = Vector3.new(2, 2, 2) -- Smaller than the spawn button
-healthPack.Position = Vector3.new(-5, 1, 0) -- Moved to the left
-healthPack.Anchored = true
-healthPack.CanCollide = true
-healthPack.BrickColor = BrickColor.new("Really red")
-healthPack.Material = Enum.Material.Neon
-print("Health pack created")
-
--- Add a white stripe to the health pack
-local stripe = Instance.new("Part")
-stripe.Name = "HealthStripe"
-stripe.Size = Vector3.new(0.2, 2, 2) -- Thin vertical stripe
-stripe.Position = healthPack.Position + Vector3.new(0, 0, 0)
-stripe.Anchored = true
-stripe.CanCollide = false
-stripe.BrickColor = BrickColor.new("White")
-stripe.Material = Enum.Material.Neon
-stripe.Parent = healthPack
-
+healthPack.Position = Vector3.new(-5, 5, 0) -- Raised height to 5
 healthPack.Parent = workspace
+
+-- Make all parts anchored and non-collidable
+for _, part in ipairs(healthPack:GetDescendants()) do
+    if part:IsA("BasePart") then
+        part.Anchored = true
+        part.CanCollide = false
+    end
+end
+
+print("Health pack created")
 
 -- Add ProximityPrompt for health pack
 local healthPrompt = Instance.new("ProximityPrompt")
 healthPrompt.Name = "HealthPackPrompt"
 healthPrompt.ActionText = "Heal"
-healthPrompt.ObjectText = "Health Pack"
+healthPrompt.ObjectText = "Honey Dipper"
 healthPrompt.HoldDuration = 0.5
 healthPrompt.MaxActivationDistance = 10
-healthPrompt.Parent = healthPack
+healthPrompt.Parent = healthPack.PrimaryPart or healthPack
 
 -- Create billboard GUI for cooldown timer
 local billboardGui = Instance.new("BillboardGui")
 billboardGui.Name = "CooldownTimer"
-billboardGui.Size = UDim2.new(0, 100, 0, 50)
-billboardGui.StudsOffset = Vector3.new(0, 3, 0) -- Position above the health pack
-billboardGui.Adornee = healthPack
-billboardGui.Parent = healthPack
+billboardGui.Size = UDim2.new(0, 200, 0, 100) -- Increased size for better visibility
+billboardGui.StudsOffset = Vector3.new(0, 4, 0) -- Raised higher above health pack
+billboardGui.Adornee = healthPack.PrimaryPart or healthPack
+billboardGui.Parent = healthPack.PrimaryPart or healthPack
 
 local timerText = Instance.new("TextLabel")
 timerText.Name = "TimerText"
 timerText.Size = UDim2.new(1, 0, 1, 0)
-timerText.BackgroundTransparency = 1
+timerText.BackgroundTransparency = 0.5 -- Semi-transparent background
+timerText.BackgroundColor3 = Color3.new(0, 0, 0) -- Black background
 timerText.TextColor3 = Color3.new(1, 1, 1) -- White text
 timerText.TextScaled = true
 timerText.Font = Enum.Font.GothamBold
@@ -627,9 +627,17 @@ healthPrompt.Triggered:Connect(function(player)
                     debugPrint("Healed player:", player.Name, "New health:", newHealth)
                     
                     -- Visual effect
-                    healthPack.BrickColor = BrickColor.new("Bright green")
+                    for _, part in ipairs(healthPack:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.BrickColor = BrickColor.new("Bright green")
+                        end
+                    end
                     task.delay(0.2, function()
-                        healthPack.BrickColor = BrickColor.new("Really red")
+                        for _, part in ipairs(healthPack:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.BrickColor = BrickColor.new("Really red")
+                            end
+                        end
                     end)
                 end
             end
