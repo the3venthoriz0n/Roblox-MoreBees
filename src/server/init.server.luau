@@ -91,13 +91,13 @@ if #honeyDripSounds == 0 then warn("No HoneyDrip sounds found in ServerStorage!"
 -- Spawn control
 local swarm = false -- Set to true to enable bee swarming behavior
 local AUTO_SPAWN_INTERVAL = 1 -- Spawn a bee every 10 seconds
-local BASE_MIN_BEES = 10 -- Base minimum number of bees
-local BEES_PER_PLAYER = 1 -- Additional bees per player
+local BASE_MIN_BEES = 30 -- Base minimum number of bees
+local BEES_PER_PLAYER = 5 -- Additional bees per player
 local MIN_SPAWN_INTERVAL = 1 -- Spawn every second when below minimum
 local MAX_SPAWN_INTERVAL = 10 -- Normal spawn interval when at or above minimum
 
 -- Constants for HoneyDrip spawning
-local MAX_HONEYDRIPS = 10 -- Maximum number of HoneyDrips allowed in workspace
+local MAX_HONEYDRIPS = 20 -- Maximum number of HoneyDrips allowed in workspace
 local BASE_DRIP_SPAWN_INTERVAL = 10 -- Base interval in seconds for drips to spawn
 local DRIP_SPAWN_DECREASE_PER_BEE = 0.5 -- How much interval decreases per alive bee
 
@@ -543,8 +543,8 @@ local function createFlyingCube(customColor)
                     lastStingTimes[player] = now
                     local humanoid = character:FindFirstChild("Humanoid")
                     if humanoid and humanoid.Health > 0 then
-                        debugPrint("Stinging player for 10 damage!")
-                        humanoid:TakeDamage(10)
+                        debugPrint("Stinging player for 20 damage!")
+                        humanoid:TakeDamage(20)
 
                         -- Play sting sound
                         if #stingSounds > 0 then
