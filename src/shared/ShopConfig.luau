@@ -6,7 +6,7 @@ ShopConfig.POWER_UPS_DATA = {
         Description = "Increases your movement speed by 50% for 30 seconds",
         Cost = 2,
         RobuxCost = 5,
-        ProductId = 12345,
+        ProductId = 3307385345,
         Duration = 30,
     },
     {
@@ -14,7 +14,7 @@ ShopConfig.POWER_UPS_DATA = {
         Description = "Increases your max health by 50 for 1 minute",
         Cost = 3,
         RobuxCost = 10,
-        ProductId = 67890,
+        ProductId = 3307385342,
         Duration = 60,
     },
     {
@@ -22,7 +22,7 @@ ShopConfig.POWER_UPS_DATA = {
         Description = "Bees cannot sting you for 45 seconds",
         Cost = 4,
         RobuxCost = 20,
-        ProductId = 11223,
+        ProductId = 3307385343,
         Duration = 45,
     },
     {
@@ -30,7 +30,7 @@ ShopConfig.POWER_UPS_DATA = {
         Description = "Spawns 20 additional bees",
         Cost = 5, -- 1 HoneyDrip
         RobuxCost = 25, -- 10 Robux
-        ProductId = 44556, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
+        ProductId = 3307385346, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 0, -- Instant effect
     }
 }
