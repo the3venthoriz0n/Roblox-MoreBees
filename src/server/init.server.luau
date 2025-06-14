@@ -27,6 +27,11 @@ local BEES_PER_PLAYER = 1 -- Additional bees per player
 local MIN_SPAWN_INTERVAL = 1 -- Spawn every second when below minimum
 local MAX_SPAWN_INTERVAL = 10 -- Normal spawn interval when at or above minimum
 
+-- Constants for HoneyDrip spawning
+local MAX_HONEYDRIPS = 10 -- Maximum number of HoneyDrips allowed in workspace
+local BASE_DRIP_SPAWN_INTERVAL = 10 -- Base interval in seconds for drips to spawn
+local DRIP_SPAWN_DECREASE_PER_BEE = 0.5 -- How much interval decreases per alive bee
+
 -- Define Collision Groups
 local BEEHIVE_COLLISION_GROUP = "BeeHiveGroup"
 local CUBE_COLLISION_GROUP = "FlyingGroup"
@@ -332,8 +337,8 @@ local function createFlyingCube()
                     lastStingTimes[player] = now
                     local humanoid = character:FindFirstChild("Humanoid")
                     if humanoid and humanoid.Health > 0 then
-                        debugPrint("Stinging player for 20 damage!")
-                        humanoid:TakeDamage(20)
+                        debugPrint("Stinging player for 10 damage!")
+                        humanoid:TakeDamage(10)
 
                         -- Bee "dies" after stinging
                         isBeeDead = true
@@ -396,9 +401,9 @@ local function getPlayerScore(player)
         leaderboardValue.Name = "leaderstats"
         leaderboardValue.Parent = player
         
-        local scoreStat = Instance.new("IntValue")
-        scoreStat.Name = "Score"
-        scoreStat.Value = 0
+        local scoreStat = Instance.new("StringValue")
+        scoreStat.Name = "Survived"
+        scoreStat.Value = "0s"
         scoreStat.Parent = leaderboardValue
     end
     return scoreValue
@@ -412,9 +417,9 @@ local function updatePlayerScore(player, newScore)
         -- Update leaderboard
         local leaderstats = player:FindFirstChild("leaderstats")
         if leaderstats then
-            local scoreStat = leaderstats:FindFirstChild("Score")
-            if scoreStat then
-                scoreStat.Value = newScore
+            local scoreStat = leaderstats:FindFirstChild("Survived")
+            if scoreStat and scoreStat:IsA("StringValue") then
+                scoreStat.Value = tostring(newScore) .. "s"
             end
         end
         debugPrint("New high score for", player.Name, ":", newScore)
@@ -431,9 +436,9 @@ local function onPlayerAdded(player)
     leaderboardValue.Name = "leaderstats"
     leaderboardValue.Parent = player
     
-    local scoreStat = Instance.new("IntValue")
-    scoreStat.Name = "Score"
-    scoreStat.Value = 0
+    local scoreStat = Instance.new("StringValue")
+    scoreStat.Name = "Survived"
+    scoreStat.Value = "0s"
     scoreStat.Parent = leaderboardValue
     
     -- Start scoring when character is added
@@ -578,198 +583,122 @@ prompt.Triggered:Connect(function(player)
     end
 end)
 
--- Create a health pack
-print("Creating health pack...")
-local healthPack = ReplicatedStorage:FindFirstChild("HoneyJar")
-if not healthPack then
-    warn("HoneyJar model not found in ReplicatedStorage! Please add the HoneyJar model to ReplicatedStorage.")
-    return
-end
+-- Handle ClicktoGetValue item interaction
+local clickToGetValueItem = workspace:FindFirstChild("ClicktoGetValue")
+if clickToGetValueItem then
+    debugPrint("Found ClicktoGetValue item.")
 
--- Clone the HoneyJar model
-healthPack = healthPack:Clone()
-healthPack.Name = "HealthPack"
-healthPack.Parent = workspace
-
--- Find the Handle part
-local primaryPart = healthPack:FindFirstChild("Handle")
-if not primaryPart then
-    warn("No 'Handle' part found in HoneyJar model!")
-    return
-end
-
--- Set the PrimaryPart to the Handle
-healthPack.PrimaryPart = primaryPart
-
--- Position the entire model
-primaryPart.Position = Vector3.new(-5, 5, 0) -- Raised height to 5
-
--- Make all parts non-collidable but not anchored
-for _, part in ipairs(healthPack:GetDescendants()) do
-    if part:IsA("BasePart") then
-        part.CanCollide = false
+    -- Remove existing ClickDetector and Script to prevent old behavior
+    local existingClickDetector = clickToGetValueItem:FindFirstChildOfClass("ClickDetector")
+    if existingClickDetector then
+        existingClickDetector:Destroy()
+        debugPrint("Destroyed existing ClickDetector on ClicktoGetValue.")
     end
-end
+    local existingScript = clickToGetValueItem:FindFirstChildOfClass("Script")
+    if existingScript then
+        existingScript:Destroy()
+        debugPrint("Destroyed existing Script on ClicktoGetValue.")
+    end
 
--- Add floating behavior
-if primaryPart then
-    -- Add BodyPosition for floating
-    local bodyPosition = Instance.new("BodyPosition")
-    bodyPosition.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-    bodyPosition.P = 1000
-    bodyPosition.D = 100
-    bodyPosition.Position = primaryPart.Position
-    bodyPosition.Parent = primaryPart
+    -- Add ProximityPrompt for pickup interaction
+    local pickupPrompt = Instance.new("ProximityPrompt")
+    pickupPrompt.Name = "PickupPrompt"
+    pickupPrompt.ActionText = "Pick Up"
+    pickupPrompt.ObjectText = "Item"
+    pickupPrompt.HoldDuration = 0.5
+    pickupPrompt.MaxActivationDistance = 10
+    pickupPrompt.Parent = clickToGetValueItem
+    debugPrint("ProximityPrompt added to ClicktoGetValue.")
 
-    -- Add BodyGyro to keep it upright
-    local bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
-    bodyGyro.P = 1000
-    bodyGyro.D = 100
-    bodyGyro.CFrame = primaryPart.CFrame
-    bodyGyro.Parent = primaryPart
-
-    -- Simple bobbing motion
-    local startTime = tick()
-    RunService.Heartbeat:Connect(function()
-        if not primaryPart.Parent then return end
-        
-        -- Gentle bobbing motion
-        local time = tick() - startTime
-        local bobOffset = math.sin(time * 1.5) * 0.3 -- Slower and smaller bobbing motion
-        
-        -- Update position with bobbing
-        bodyPosition.Position = Vector3.new(-5, 5 + bobOffset, 0)
+    -- Handle prompt trigger for pickup
+    pickupPrompt.Triggered:Connect(function(player)
+        debugPrint("Player ", player.Name, " picked up ClicktoGetValue item.")
+        -- Add your pickup logic here (e.g., give item to player, update score, etc.)
+        -- For now, we will simply destroy the item.
+        clickToGetValueItem:Destroy()
     end)
+else
+    warn("ClicktoGetValue item not found in workspace.")
 end
 
-print("Health pack created")
+-- HoneyDrip Item Interaction
+local honeyDripItem = workspace:FindFirstChild("HoneyDrip")
 
--- Add ProximityPrompt for health pack
-local healthPrompt = Instance.new("ProximityPrompt")
-healthPrompt.Name = "HealthPackPrompt"
-healthPrompt.ActionText = "Heal"
-healthPrompt.ObjectText = "Honey Jar"
-healthPrompt.HoldDuration = 0.5
-healthPrompt.MaxActivationDistance = 10
-healthPrompt.RequiresLineOfSight = true -- Only allow interaction when player can see the jar
-healthPrompt.Parent = primaryPart
+local HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health to restore when picking up HoneyDrip
 
--- Create billboard GUI for cooldown timer
-local billboardGui = Instance.new("BillboardGui")
-billboardGui.Name = "CooldownTimer"
-billboardGui.Size = UDim2.new(0, 100, 0, 50) -- Smaller size for better centering
-billboardGui.StudsOffset = Vector3.new(0, 1.5, 0) -- Position centered above the jar
-billboardGui.Adornee = primaryPart
-billboardGui.Parent = primaryPart
+if honeyDripItem then
+    debugPrint("Found HoneyDrip item.")
+    local honeyDripPrompt = honeyDripItem:FindFirstChildOfClass("ProximityPrompt")
+    if honeyDripPrompt then
+        debugPrint("Found ProximityPrompt on HoneyDrip.")
+        honeyDripPrompt.ActionText = "Collect"
+        honeyDripPrompt.ObjectText = "Honey Drip"
 
-local timerText = Instance.new("TextLabel")
-timerText.Name = "TimerText"
-timerText.Size = UDim2.new(1, 0, 1, 0)
-timerText.BackgroundTransparency = 0.5 -- Semi-transparent background
-timerText.BackgroundColor3 = Color3.new(0, 0, 0) -- Black background
-timerText.TextColor3 = Color3.new(1, 1, 1) -- White text
-timerText.TextScaled = true
-timerText.Font = Enum.Font.GothamBold
-timerText.Text = "Health"
-timerText.Parent = billboardGui
-
--- Health pack cooldown
-local lastHealTime = 0
-local HEAL_COOLDOWN = 5 -- 5 seconds between heals
-local HEAL_AMOUNT = 25 -- Amount of health to restore
-
--- Function to update cooldown timer
-local function updateCooldownTimer()
-    if not primaryPart or not primaryPart.Parent then return end -- Safety check
-    
-    local currentTime = tick()
-    local timeSinceLastHeal = currentTime - lastHealTime
-    local remainingCooldown = math.max(0, HEAL_COOLDOWN - timeSinceLastHeal)
-    
-    if remainingCooldown > 0 then
-        timerText.Text = string.format("%.1f", remainingCooldown)
-        timerText.TextColor3 = Color3.new(1, 0, 0) -- Red when on cooldown
-        healthPrompt.Enabled = false -- Disable prompt during cooldown
-    else
-        timerText.Text = "Health"
-        timerText.TextColor3 = Color3.new(0, 1, 0) -- Green when ready
-        healthPrompt.Enabled = true -- Enable prompt when ready
-    end
-end
-
--- Update timer every frame
-local cooldownConnection
-cooldownConnection = RunService.Heartbeat:Connect(function()
-    if not primaryPart or not primaryPart.Parent then
-        if cooldownConnection then
-            cooldownConnection:Disconnect()
-        end
-        return
-    end
-    updateCooldownTimer()
-end)
-
--- Handle health pack trigger
-healthPrompt.Triggered:Connect(function(player)
-    if not primaryPart or not primaryPart.Parent then return end -- Safety check
-    
-    local currentTime = tick()
-    if currentTime - lastHealTime >= HEAL_COOLDOWN then
-        lastHealTime = currentTime
-        
-        local character = player.Character
-        if character then
-            local humanoid = character:FindFirstChild("Humanoid")
-            if humanoid then
-                -- Only heal if player is damaged
-                if humanoid.Health < humanoid.MaxHealth then
-                    -- Calculate new health (don't exceed max)
-                    local newHealth = math.min(humanoid.MaxHealth, humanoid.Health + HEAL_AMOUNT)
-                    humanoid.Health = newHealth
-                    
-                    debugPrint("Healed player:", player.Name, "New health:", newHealth)
-                    
-                    -- Visual effect
-                    for _, part in ipairs(healthPack:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.BrickColor = BrickColor.new("Bright green")
-                            -- Add a brief glow effect
-                            local originalMaterial = part.Material
-                            part.Material = Enum.Material.Neon
-                            task.delay(0.2, function()
-                                if part.Parent then
-                                    part.Material = originalMaterial
-                                    part.BrickColor = BrickColor.new("Really red")
-                                end
-                            end)
-                        end
-                    end
-                    
-                    -- Play a healing sound if available
-                    local healSound = healthPack:FindFirstChild("HealSound")
-                    if not healSound then
-                        healSound = Instance.new("Sound")
-                        healSound.Name = "HealSound"
-                        healSound.SoundId = "rbxassetid://9114827380" -- Default healing sound
-                        healSound.Volume = 0.5
-                        healSound.Parent = healthPack
-                    end
-                    healSound:Play()
-                else
-                    -- Player is at full health
-                    timerText.Text = "Full Health"
-                    timerText.TextColor3 = Color3.new(1, 1, 0) -- Yellow for full health
-                    task.delay(1, function()
-                        if timerText.Parent then
-                            updateCooldownTimer()
-                        end
-                    end)
+        honeyDripPrompt.Triggered:Connect(function(player)
+            debugPrint("Player ", player.Name, " triggered HoneyDrip prompt.")
+            
+            -- Give HoneyDrip to player's inventory (using leaderstats for simplicity)
+            local leaderstats = player:FindFirstChild("leaderstats")
+            if leaderstats then
+                local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
+                if not honeyDrips then
+                    honeyDrips = Instance.new("IntValue")
+                    honeyDrips.Name = "HoneyDrips"
+                    honeyDrips.Value = 0
+                    honeyDrips.Parent = leaderstats
+                    debugPrint("Created new HoneyDrips IntValue for ", player.Name)
                 end
+                honeyDrips.Value = honeyDrips.Value + 1
+                debugPrint(player.Name, " collected a HoneyDrip. Total: ", honeyDrips.Value)
+
+                -- Give health bump to the player
+                local character = player.Character
+                if character then
+                    local humanoid = character:FindFirstChild("Humanoid")
+                    if humanoid then
+                        if humanoid.Health < humanoid.MaxHealth then
+                            local newHealth = math.min(humanoid.MaxHealth, humanoid.Health + HEAL_AMOUNT_HONEYDRIP)
+                            humanoid.Health = newHealth
+                            debugPrint("Healed player:", player.Name, " by ", HEAL_AMOUNT_HONEYDRIP, " health. New health:", newHealth)
+                        else
+                            debugPrint(player.Name, " is already at full health. No healing applied.")
+                        end
+                    end
+                end
+
+                -- Visual effect for pickup
+                local originalBrickColor = honeyDripItem.BrickColor
+                honeyDripItem.BrickColor = BrickColor.new("Really yellow") -- Bright color on pickup
+                task.delay(0.1, function()
+                    if honeyDripItem then -- Check if item still exists
+                        honeyDripItem.BrickColor = originalBrickColor
+                    end
+                end)
+
+                -- Play a pickup sound
+                local pickupSound = honeyDripItem:FindFirstChild("PickupSound")
+                if not pickupSound then
+                    pickupSound = Instance.new("Sound")
+                    pickupSound.Name = "PickupSound"
+                    pickupSound.SoundId = "rbxassetid://9114827380" -- Reusing existing heal sound, or you can provide a new one
+                    pickupSound.Volume = 0.5
+                    pickupSound.Parent = honeyDripItem
+                end
+                pickupSound:Play()
+
+                -- Destroy the HoneyDrip from the workspace
+                honeyDripItem:Destroy()
+                debugPrint("HoneyDrip item destroyed.")
+            else
+                warn("Leaderstats not found for player ", player.Name, ". Cannot add HoneyDrip or heal.")
             end
-        end
+        end)
+    else
+        warn("No ProximityPrompt found on HoneyDrip item. Please add one.")
     end
-end)
+else
+    warn("HoneyDrip item not found in workspace.")
+end
 
 -- Add global spawn state
 -- local swarm = true -- Start with swarm enabled -- REMOVED due to re-declaration
@@ -821,4 +750,154 @@ workspace.ChildRemoved:Connect(function(child)
         debugPrint("Bee removed from workspace, updating count")
         updateBeeCount()
     end
+end)
+
+-- Function to get current HoneyDrip count in workspace
+local function getHoneyDripCount()
+    local count = 0
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj.Name == "HoneyDrip" then -- Assuming HoneyDrip model is named "HoneyDrip"
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- Function to create and spawn a HoneyDrip item near the BeeHive
+local function createHoneyDrip()
+    debugPrint("Attempting to create HoneyDrip...")
+    
+    -- Get the HoneyDrip template from ReplicatedStorage
+    local honeyDripTemplate = ReplicatedStorage:FindFirstChild("HoneyDrip")
+    if not honeyDripTemplate or not honeyDripTemplate:IsA("MeshPart") then
+        warn("HoneyDrip template not found in ReplicatedStorage! Please add a HoneyDrip MeshPart to ReplicatedStorage.")
+        return nil
+    end
+
+    local newDrip = honeyDripTemplate:Clone()
+    newDrip.Name = "HoneyDrip"
+    
+    -- Ensure the new drip is unanchored and collidable so it falls
+    newDrip.Anchored = false
+    newDrip.CanCollide = true -- So it can land on the ground
+    newDrip.Transparency = 0 -- Ensure it's visible
+
+    -- Position the drip near the BeeHive's primary part
+    local beeHive = workspace:FindFirstChild("BeeHive")
+    local spawnPosition = Vector3.new(0, 0, 0) -- Default spawn if BeeHive not found
+
+    if beeHive and beeHive.PrimaryPart then
+        -- Spawn on the ground under the BeeHive with a small random offset
+        spawnPosition = Vector3.new(
+            beeHive.PrimaryPart.Position.X + math.random(-2, 2), -- Small X offset
+            0, -- Ground level
+            beeHive.PrimaryPart.Position.Z + math.random(-2, 2)  -- Small Z offset
+        )
+    else
+        warn("BeeHive or its PrimaryPart not found. Spawning HoneyDrip at default position.")
+    end
+
+    newDrip.Position = spawnPosition -- Set position directly on the MeshPart
+    newDrip.Parent = workspace
+    debugPrint("HoneyDrip created at ", tostring(spawnPosition), " with size ", tostring(newDrip.Size))
+
+    -- Get the existing ProximityPrompt from the cloned HoneyDrip
+    local prompt = newDrip:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then
+        debugPrint("Found existing ProximityPrompt on HoneyDrip")
+        -- Connect the Triggered event for the prompt
+        prompt.Triggered:Connect(function(player)
+            debugPrint("HoneyDrip Triggered event fired for player:", player.Name)
+            -- Give HoneyDrip to player's inventory (using leaderstats for simplicity)
+            local leaderstats = player:FindFirstChild("leaderstats")
+            if leaderstats then
+                local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
+                if not honeyDrips then
+                    honeyDrips = Instance.new("IntValue")
+                    honeyDrips.Name = "HoneyDrips"
+                    honeyDrips.Value = 0
+                    honeyDrips.Parent = leaderstats
+                    debugPrint("Created new HoneyDrips IntValue for ", player.Name)
+                end
+                honeyDrips.Value = honeyDrips.Value + 1
+                debugPrint(player.Name, " collected a HoneyDrip. Total: ", honeyDrips.Value)
+
+                -- Give health bump to the player
+                local character = player.Character
+                if character then
+                    local humanoid = character:FindFirstChild("Humanoid")
+                    if humanoid then
+                        if humanoid.Health < humanoid.MaxHealth then
+                            local newHealth = math.min(humanoid.MaxHealth, humanoid.Health + HEAL_AMOUNT_HONEYDRIP)
+                            humanoid.Health = newHealth
+                            debugPrint("Healed player:", player.Name, " by ", HEAL_AMOUNT_HONEYDRIP, " health. New health:", newHealth)
+                        else
+                            debugPrint(player.Name, " is already at full health. No healing applied.")
+                        end
+                    end
+                end
+
+                -- Visual effect for pickup
+                local originalBrickColor = newDrip.BrickColor
+                newDrip.BrickColor = BrickColor.new("Really yellow")
+                task.delay(0.1, function()
+                    if newDrip then
+                        newDrip.BrickColor = originalBrickColor
+                    end
+                end)
+
+                -- Play a pickup sound
+                local pickupSound = newDrip:FindFirstChild("PickupSound")
+                if not pickupSound then
+                    pickupSound = Instance.new("Sound")
+                    pickupSound.Name = "PickupSound"
+                    pickupSound.SoundId = "rbxassetid://9114827380"
+                    pickupSound.Volume = 0.5
+                    pickupSound.Parent = newDrip
+                end
+                pickupSound:Play()
+
+                -- Destroy the HoneyDrip from the workspace
+                newDrip:Destroy()
+                debugPrint("HoneyDrip item destroyed.")
+            else
+                warn("Leaderstats not found for player ", player.Name, ". Cannot add HoneyDrip or heal.")
+            end
+        end)
+    else
+        warn("No ProximityPrompt found on HoneyDrip template!")
+    end
+
+    return newDrip
+end
+
+-- Automatic HoneyDrip spawner
+local function startHoneyDripSpawner()
+    while true do
+        local currentDrips = getHoneyDripCount()
+        local aliveBees = getBeeCount() -- Reusing getBeeCount for dynamic interval
+
+        local spawnInterval = BASE_DRIP_SPAWN_INTERVAL
+        if aliveBees > 0 then
+            -- Decrease spawn interval based on alive bees, but not below 1 second to prevent spam
+            spawnInterval = math.max(1, BASE_DRIP_SPAWN_INTERVAL - (aliveBees * DRIP_SPAWN_DECREASE_PER_BEE))
+        end
+
+        debugPrint("Current HoneyDrips:", currentDrips, " Alive Bees:", aliveBees, " Calculated Drip Spawn Interval:", spawnInterval)
+
+        if currentDrips < MAX_HONEYDRIPS then
+            createHoneyDrip()
+        else
+            debugPrint("Max HoneyDrips reached (", MAX_HONEYDRIPS, "). Not spawning.")
+        end
+
+        task.wait(spawnInterval)
+    end
+end
+
+-- Start the HoneyDrip spawner after a short delay
+print("Starting HoneyDrip spawner...")
+task.delay(2, function()
+    task.spawn(startHoneyDripSpawner)
+    print("HoneyDrip spawner started")
 end)
