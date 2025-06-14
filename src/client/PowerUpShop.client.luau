@@ -25,6 +25,14 @@ local POWER_UPS = {
         Cost = 4,
         RobuxCost = 20,
         ProductId = 11223,
+    },
+    -- New Power-Up: Spawn 10 Bees
+    {
+        Name = "Spawn Bees",
+        Description = "Spawns 10 additional bees",
+        Cost = 1, -- 1 HoneyDrip
+        RobuxCost = 10, -- 10 Robux
+        ProductId = 44556, -- Must match server ProductId
     }
 }
 

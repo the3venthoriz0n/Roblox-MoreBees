@@ -64,6 +64,24 @@ local POWER_UPS = {
                 end)
             end
         end
+    },
+    -- New Power-Up: Spawn 10 Bees
+    {
+        Name = "Spawn Bees",
+        Description = "Spawns 10 additional bees",
+        Cost = 1, -- 1 HoneyDrip
+        RobuxCost = 10, -- 10 Robux
+        ProductId = 44556, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
+        Duration = 0, -- Instant effect
+        Effect = function(character)
+            -- Fire the BindableEvent to request bee spawning
+            local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
+            if spawnBeesRequestEvent then
+                spawnBeesRequestEvent:Fire(10) -- Request to spawn 10 bees
+            else
+                warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
+            end
+        end
     }
 }
 

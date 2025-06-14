@@ -499,131 +499,6 @@ print("Starting flying cube spawn...")
 createFlyingCube()
 updateBeeCount() -- Update count immediately after initial spawn
 
--- Create a spawn button
-print("Creating spawn button...")
-local spawnButton = Instance.new("Part")
-spawnButton.Name = "BeeSpawnButton"
-spawnButton.Size = Vector3.new(4, 4, 4) -- Cube shape
-spawnButton.Position = Vector3.new(10, 2, 0) -- Moved to the right
-spawnButton.Anchored = true
-spawnButton.CanCollide = true
-spawnButton.BrickColor = BrickColor.new("New Yeller") -- Changed to yellow
-spawnButton.Material = Enum.Material.Neon
-spawnButton.Parent = workspace
-print("Spawn button created and parented to workspace")
-
--- Add ProximityPrompt for interaction
-local prompt = Instance.new("ProximityPrompt")
-prompt.Name = "SpawnBeePrompt"
-prompt.ActionText = "Spawn Bee"
-prompt.ObjectText = "Bee Spawner"
-prompt.HoldDuration = 0.5
-prompt.MaxActivationDistance = 10
-prompt.Parent = spawnButton
-
--- Create billboard GUI for spawn cooldown timer
-local spawnBillboardGui = Instance.new("BillboardGui")
-spawnBillboardGui.Name = "SpawnCooldownTimer"
-spawnBillboardGui.Size = UDim2.new(0, 100, 0, 50)
-spawnBillboardGui.StudsOffset = Vector3.new(0, 3, 0) -- Position above the spawn button
-spawnBillboardGui.Adornee = spawnButton
-spawnBillboardGui.Parent = spawnButton
-
-local spawnTimerText = Instance.new("TextLabel")
-spawnTimerText.Name = "SpawnTimerText"
-spawnTimerText.Size = UDim2.new(1, 0, 1, 0)
-spawnTimerText.BackgroundTransparency = 1
-spawnTimerText.TextColor3 = Color3.new(1, 1, 1) -- White text
-spawnTimerText.TextScaled = true
-spawnTimerText.Font = Enum.Font.GothamBold
-spawnTimerText.Text = "Spawn Bee"
-spawnTimerText.Parent = spawnBillboardGui
-
--- Add a cooldown system
-local lastSpawnTime = 0
-local SPAWN_COOLDOWN = 2 -- 2 seconds between spawns
-
--- Function to update spawn cooldown timer
-local function updateSpawnCooldownTimer()
-    local currentTime = tick()
-    local timeSinceLastSpawn = currentTime - lastSpawnTime
-    local remainingCooldown = math.max(0, SPAWN_COOLDOWN - timeSinceLastSpawn)
-    
-    if remainingCooldown > 0 then
-        spawnTimerText.Text = string.format("%.1f", remainingCooldown)
-        spawnTimerText.TextColor3 = Color3.new(1, 0, 0) -- Red when on cooldown
-    else
-        spawnTimerText.Text = "Spawn Bee"
-        spawnTimerText.TextColor3 = Color3.new(0, 1, 0) -- Green when ready
-    end
-end
-
--- Update spawn timer every frame
-local spawnCooldownConnection
-spawnCooldownConnection = RunService.Heartbeat:Connect(function()
-    if not spawnButton.Parent then
-        spawnCooldownConnection:Disconnect()
-        return
-    end
-    updateSpawnCooldownTimer()
-end)
-
--- Handle prompt trigger
-prompt.Triggered:Connect(function(player)
-    local currentTime = tick()
-    if currentTime - lastSpawnTime >= SPAWN_COOLDOWN then
-        lastSpawnTime = currentTime
-        debugPrint("Spawn button triggered by player:", player.Name)
-        
-        -- Visual effect
-        spawnButton.BrickColor = BrickColor.new("Really red")
-        task.delay(0.2, function()
-            spawnButton.BrickColor = BrickColor.new("New Yeller") -- Changed to yellow
-        end)
-        
-        -- Spawn the bee
-        createFlyingCube()
-    end
-end)
-
--- Handle ClicktoGetValue item interaction
-local clickToGetValueItem = workspace:FindFirstChild("ClicktoGetValue")
-if clickToGetValueItem then
-    debugPrint("Found ClicktoGetValue item.")
-
-    -- Remove existing ClickDetector and Script to prevent old behavior
-    local existingClickDetector = clickToGetValueItem:FindFirstChildOfClass("ClickDetector")
-    if existingClickDetector then
-        existingClickDetector:Destroy()
-        debugPrint("Destroyed existing ClickDetector on ClicktoGetValue.")
-    end
-    local existingScript = clickToGetValueItem:FindFirstChildOfClass("Script")
-    if existingScript then
-        existingScript:Destroy()
-        debugPrint("Destroyed existing Script on ClicktoGetValue.")
-    end
-
-    -- Add ProximityPrompt for pickup interaction
-    local pickupPrompt = Instance.new("ProximityPrompt")
-    pickupPrompt.Name = "PickupPrompt"
-    pickupPrompt.ActionText = "Pick Up"
-    pickupPrompt.ObjectText = "Item"
-    pickupPrompt.HoldDuration = 0.5
-    pickupPrompt.MaxActivationDistance = 10
-    pickupPrompt.Parent = clickToGetValueItem
-    debugPrint("ProximityPrompt added to ClicktoGetValue.")
-
-    -- Handle prompt trigger for pickup
-    pickupPrompt.Triggered:Connect(function(player)
-        debugPrint("Player ", player.Name, " picked up ClicktoGetValue item.")
-        -- Add your pickup logic here (e.g., give item to player, update score, etc.)
-        -- For now, we will simply destroy the item.
-        clickToGetValueItem:Destroy()
-    end)
-else
-    warn("ClicktoGetValue item not found in workspace.")
-end
-
 -- HoneyDrip Item Interaction
 local honeyDripItem = workspace:FindFirstChild("HoneyDrip")
 
@@ -904,3 +779,22 @@ task.delay(2, function()
     task.spawn(startHoneyDripSpawner)
     print("HoneyDrip spawner started")
 end)
+
+-- New: BindableEvent for inter-script communication
+local SpawnBeesRequestEvent = Instance.new("BindableEvent")
+SpawnBeesRequestEvent.Name = "SpawnBeesRequestEvent"
+SpawnBeesRequestEvent.Parent = ReplicatedStorage
+
+-- Function to spawn multiple bees (called via BindableEvent)
+local function spawnMultipleBees(count)
+    for i = 1, count do
+        task.spawn(function()
+            createFlyingCube()
+        end)
+    end
+    updateBeeCount()
+    debugPrint("Spawned", count, "bees via request!")
+end
+
+-- Connect the BindableEvent to the spawning function
+SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
