@@ -47,6 +47,30 @@ setupCollisionGroups()
 
 print("Server script starting...")
 
+-- Create a StringValue in ReplicatedStorage to display current bee count
+local beeCountDisplay = Instance.new("StringValue")
+beeCountDisplay.Name = "BeeCountDisplay"
+beeCountDisplay.Value = "Bees: 0"
+beeCountDisplay.Parent = ReplicatedStorage
+
+-- Function to get current bee count
+local function getBeeCount()
+    local count = 0
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj.Name == "FlyingCube" and obj:FindFirstChild("IsAlive") and obj.IsAlive.Value == 1 then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- Function to update bee count display
+local function updateBeeCount()
+    local count = getBeeCount()
+    beeCountDisplay.Value = "Bees: " .. count
+    debugPrint("Updated bee count:", count)
+end
+
 -- Function to create and spawn a flying cube that follows the closest player
 local function createFlyingCube()
     debugPrint("Attempting to create flying cube...")
@@ -277,9 +301,29 @@ end)
                     if humanoid and humanoid.Health > 0 then
                         debugPrint("Stinging player for 20 damage!")
                         humanoid:TakeDamage(20)
-                        
-                        -- Handle bee death
-                        handleBeeDeath(cube)
+
+                        -- Cube "dies" after stinging
+                        isCubeDead = true
+                        isAlive.Value = 0 -- Mark as dead
+                        if bodyPosition then bodyPosition:Destroy() end
+                        if bodyGyro then bodyGyro:Destroy() end
+                        if connection then connection:Disconnect() end -- Disconnect Heartbeat
+                        cube.CanCollide = true -- Ensure it can collide with the ground
+                        -- Optional: Change color to indicate it's dead
+                        cube.BrickColor = BrickColor.new("Dark stone grey")
+                        cube.Transparency = 0.5
+
+                        -- Update the bee count display immediately after a bee "dies"
+                        updateBeeCount()
+
+                        -- Chance to spawn a new cube when this one "dies" (only if swarm is enabled)
+                        if swarm then
+                            local spawnChance = 50 -- 50% chance
+                            if math.random(1, 100) <= spawnChance then
+                                createFlyingCube()
+                                updateBeeCount() -- Update count after spawning new bee
+                            end
+                        end
                     end
                 end
             end
@@ -386,69 +430,6 @@ local function onPlayerAdded(player)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
-
--- Create a StringValue in ReplicatedStorage to display current bee count
-local beeCountDisplay = Instance.new("StringValue")
-beeCountDisplay.Name = "BeeCountDisplay"
-beeCountDisplay.Value = "Bees: 0"
-beeCountDisplay.Parent = ReplicatedStorage
-
--- Function to get current bee count
-local function getBeeCount()
-    local count = 0
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj.Name == "FlyingCube" and obj:FindFirstChild("IsAlive") and obj.IsAlive.Value == 1 then
-            count = count + 1
-        end
-    end
-    return count
-end
-
--- Function to update bee count display
-local function updateBeeCount()
-    if beeCountDisplay then
-        beeCountDisplay.Value = "Bees: " .. getBeeCount()
-    end
-end
-
--- Function to handle bee death
-local function handleBeeDeath(bee)
-    if not bee then return end
-    
-    -- Mark as dead
-    local isAlive = bee:FindFirstChild("IsAlive")
-    if isAlive then
-        isAlive.Value = 0
-    end
-    
-    -- Remove physics
-    for _, part in ipairs(bee:GetDescendants()) do
-        if part:IsA("BodyMover") then
-            part:Destroy()
-        end
-    end
-    
-    -- Visual changes
-    for _, part in ipairs(bee:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-            part.BrickColor = BrickColor.new("Dark stone grey")
-            part.Transparency = 0.5
-        end
-    end
-    
-    -- Update count
-    updateBeeCount()
-    
-    -- Chance to spawn new bee if swarm is enabled
-    if swarm then
-        local spawnChance = 50 -- 50% chance
-        if math.random(1, 100) <= spawnChance then
-            createFlyingCube()
-            updateBeeCount()
-        end
-    end
-end
 
 -- Add RemoteEvent for spawning cubes from client
 local spawnCubeEvent = Instance.new("RemoteEvent")
@@ -754,6 +735,13 @@ end)
 -- Listen for bees being removed from the workspace to update the count immediately
 workspace.ChildRemoved:Connect(function(child)
     if child.Name == "FlyingCube" then
+        debugPrint("Bee removed from workspace, updating count")
         updateBeeCount()
     end
+end)
+
+-- Also update the bee's Destroyed event
+cube.Destroying:Connect(function()
+    debugPrint("Bee being destroyed, updating count")
+    updateBeeCount()
 end)
