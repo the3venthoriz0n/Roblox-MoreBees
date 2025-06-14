@@ -72,6 +72,11 @@ local shopEvent = Instance.new("RemoteEvent")
 shopEvent.Name = "PowerUpShopEvent"
 shopEvent.Parent = ReplicatedStorage
 
+-- New RemoteEvent for purchase feedback
+local purchaseFeedbackEvent = Instance.new("RemoteEvent")
+purchaseFeedbackEvent.Name = "PurchaseFeedbackEvent"
+purchaseFeedbackEvent.Parent = ReplicatedStorage
+
 -- Function to get player's HoneyDrip count
 local function getPlayerHoneyDrips(player)
     local leaderstats = player:FindFirstChild("leaderstats")
@@ -112,10 +117,17 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
         -- Apply power-up effect
         powerUp.Effect(character)
         
-        -- Notify player
+        -- Notify player (server log)
         print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
+
+        -- Optionally, send success feedback to client
+        purchaseFeedbackEvent:FireClient(player, "Purchased " .. powerUp.Name .. "!")
     else
+        -- Notify player (server log)
         print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
+        
+        -- Send insufficient funds feedback to client
+        purchaseFeedbackEvent:FireClient(player, "Not enough HoneyDrips!")
     end
 end)
 

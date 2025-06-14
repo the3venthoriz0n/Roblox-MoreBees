@@ -31,6 +31,7 @@ local POWER_UPS = {
 -- Get RemoteEvents
 local shopEvent = ReplicatedStorage:WaitForChild("PowerUpShopEvent")
 local toggleShopEvent = ReplicatedStorage:WaitForChild("ToggleShopEvent")
+local purchaseFeedbackEvent = ReplicatedStorage:WaitForChild("PurchaseFeedbackEvent") -- New: Get feedback event
 
 -- Create shop GUI
 local function createShopGui()
@@ -67,6 +68,21 @@ local function createShopGui()
     honeyDripCount.Font = Enum.Font.GothamBold
     honeyDripCount.Parent = frame
     
+    -- Feedback TextLabel
+    local feedbackLabel = Instance.new("TextLabel")
+    feedbackLabel.Name = "FeedbackLabel"
+    feedbackLabel.Size = UDim2.new(0, 200, 0, 40)
+    feedbackLabel.Position = UDim2.new(0.5, -100, 0.05, 0) -- Top center
+    feedbackLabel.BackgroundTransparency = 0.5
+    feedbackLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    feedbackLabel.TextColor3 = Color3.new(1, 1, 1)
+    feedbackLabel.TextScaled = true
+    feedbackLabel.Font = Enum.Font.GothamBold
+    feedbackLabel.Text = ""
+    feedbackLabel.ZIndex = 2 -- Ensure it's on top
+    feedbackLabel.Visible = false
+    feedbackLabel.Parent = screenGui -- Parent to screenGui, not frame
+
     -- Update HoneyDrip count when it changes
     local function updateHoneyDripDisplay()
         local leaderstats = player:FindFirstChild("leaderstats")
@@ -160,31 +176,37 @@ local function createShopGui()
     end
     
     screenGui.Parent = player:WaitForChild("PlayerGui")
+    return screenGui -- Return the screenGui so it can be enabled/disabled
 end
+
+local currentShopGui = nil -- Store reference to the created GUI
 
 -- Listen for toggle event from server
 toggleShopEvent.OnClientEvent:Connect(function()
-    print("ToggleShopEvent received on client!")
+    if not currentShopGui then
+        currentShopGui = createShopGui()
+    end
+    currentShopGui.Enabled = not currentShopGui.Enabled
+end)
+
+-- Listen for purchase feedback from server
+purchaseFeedbackEvent.OnClientEvent:Connect(function(message)
     local shopGui = player.PlayerGui:FindFirstChild("PowerUpShopGui")
     if shopGui then
-        shopGui.Enabled = not shopGui.Enabled
-        print("Shop GUI Enabled status set to: ", shopGui.Enabled)
-    else
-        -- If GUI doesn't exist, create it and then enable/disable
-        print("Shop GUI not found, creating it...")
-        createShopGui()
-        shopGui = player.PlayerGui:FindFirstChild("PowerUpShopGui")
-        if shopGui then
-            shopGui.Enabled = true -- Enable it after creation, as the server expects it to be toggled
-            print("Shop GUI created and enabled to: ", shopGui.Enabled)
-        else
-            warn("Failed to create shop GUI.")
+        local feedbackLabel = shopGui:FindFirstChild("FeedbackLabel")
+        if feedbackLabel then
+            feedbackLabel.Text = message
+            feedbackLabel.Visible = true
+            task.delay(3, function()
+                if feedbackLabel then
+                    feedbackLabel.Visible = false
+                end
+            end)
         end
     end
 end)
 
 -- Initial GUI creation (for players already in game)
 if player and not player.PlayerGui:FindFirstChild("PowerUpShopGui") then
-    print("Initial shop GUI creation for existing player.")
-    createShopGui()
+    currentShopGui = createShopGui()
 end 
