@@ -86,40 +86,19 @@ local function createShopGui()
     updateHoneyDripDisplay()
 
     -- Listen for changes in HoneyDrips value
-    player.CharacterAdded:Connect(function()
-        -- Reconnect on character added if leaderstats object changes
+    local function setupHoneyDripsListener()
         local leaderstats = player:WaitForChild("leaderstats")
         local honeyDrips = leaderstats:WaitForChild("HoneyDrips")
         honeyDrips.Changed:Connect(updateHoneyDripDisplay)
-        updateHoneyDripDisplay() -- Initial update after character added
-    end)
+        updateHoneyDripDisplay() -- Initial update after listener is set up
+    end
 
-    -- Also listen for initial leaderstats creation
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if leaderstats then
-        local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-        if honeyDrips then
-            honeyDrips.Changed:Connect(updateHoneyDripDisplay)
-        else
-            -- Wait for HoneyDrips to be created if it doesn't exist yet
-            leaderstats.ChildAdded:Connect(function(child)
-                if child.Name == "HoneyDrips" then
-                    child.Changed:Connect(updateHoneyDripDisplay)
-                    updateHoneyDripDisplay()
-                end
-            end)
-        end
-    else
-        player.ChildAdded:Connect(function(child)
-            if child.Name == "leaderstats" then
-                child.ChildAdded:Connect(function(grandchild)
-                    if grandchild.Name == "HoneyDrips" then
-                        grandchild.Changed:Connect(updateHoneyDripDisplay)
-                        updateHoneyDripDisplay()
-                    end
-                end)
-            end
-        end)
+    -- Call setup function when player character is added (for respawns)
+    player.CharacterAdded:Connect(setupHoneyDripsListener)
+
+    -- Call setup function immediately in case character is already added
+    if player.Character then
+        setupHoneyDripsListener()
     end
 
     -- Create buttons for each power-up

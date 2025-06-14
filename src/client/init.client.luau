@@ -87,31 +87,6 @@ player.CharacterAdded:Connect(function(character)
     end)
 end)
 
--- Create GUI
-local function createCubeSpawnerGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "CubeSpawnerGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0.5, -100, 0.9, -25)
-    button.Text = "Spawn Flying Cube"
-    button.Parent = screenGui
-
-    -- Fire RemoteEvent when button is clicked
-    local spawnEvent = ReplicatedStorage:WaitForChild("SpawnCube")
-    button.MouseButton1Click:Connect(function()
-        spawnEvent:FireServer()
-    end)
-end
-
--- Only create if not already present
-if not player.PlayerGui:FindFirstChild("CubeSpawnerGui") then
-    createCubeSpawnerGui()
-end
-
 -- Create GUI for bee count display
 local function createBeeCountDisplayGui()
     local screenGui = Instance.new("ScreenGui")
@@ -145,14 +120,6 @@ if not player.PlayerGui:FindFirstChild("BeeCountDisplayGui") then
 end
 
 player.CharacterAdded:Connect(function()
-    -- Re-parent the GUI if needed (in case PlayerGui is reset)
-    local gui = player.PlayerGui:FindFirstChild("CubeSpawnerGui")
-    if not gui then
-        createCubeSpawnerGui()
-    else
-        gui.Parent = player.PlayerGui
-    end
-
     local beeGui = player.PlayerGui:FindFirstChild("BeeCountDisplayGui")
     if not beeGui then
         createBeeCountDisplayGui()
