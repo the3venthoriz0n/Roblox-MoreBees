@@ -4,15 +4,15 @@ local player = Players.LocalPlayer
 local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Require the shared shop configuration
-local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
-print("Client: ShopConfig is ", ShopConfig)
-print("Client: ShopConfig.POWER_UPS_DATA is ", ShopConfig.POWER_UPS_DATA)
+local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
 local POWER_UPS = ShopConfig.POWER_UPS_DATA
 
 -- Get RemoteEvents
 local shopEvent = ReplicatedStorage:WaitForChild("PowerUpShopEvent")
 local toggleShopEvent = ReplicatedStorage:WaitForChild("ToggleShopEvent")
 local purchaseFeedbackEvent = ReplicatedStorage:WaitForChild("PurchaseFeedbackEvent") -- New: Get feedback event
+local PowerUpActiveEvent = ReplicatedStorage:WaitForChild("PowerUpActiveEvent") -- New: Get active power-up event
+local PowerUpEndedEvent = ReplicatedStorage:WaitForChild("PowerUpEndedEvent") -- New: Get power-up ended event
 
 -- Create shop GUI
 local function createShopGui()
@@ -140,6 +140,15 @@ local function createShopGui()
             shopEvent:FireServer(i)
         end)
 
+        -- Add hover effects for HoneyDrip button
+        local originalHoneyDripColor = honeyDripButton.BackgroundColor3
+        honeyDripButton.MouseEnter:Connect(function()
+            honeyDripButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Brighter grey
+        end)
+        honeyDripButton.MouseLeave:Connect(function()
+            honeyDripButton.BackgroundColor3 = originalHoneyDripColor
+        end)
+
         -- Robux Purchase Button
         local robuxButton = Instance.new("TextButton")
         robuxButton.Size = UDim2.new(0.45, -5, 0, buttonHeight)
@@ -154,6 +163,15 @@ local function createShopGui()
         robuxButton.MouseButton1Click:Connect(function()
             MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
         end)
+
+        -- Add hover effects for Robux button
+        local originalRobuxColor = robuxButton.BackgroundColor3
+        robuxButton.MouseEnter:Connect(function()
+            robuxButton.BackgroundColor3 = Color3.fromRGB(130, 50, 130) -- Brighter purple
+        end)
+        robuxButton.MouseLeave:Connect(function()
+            robuxButton.BackgroundColor3 = originalRobuxColor
+        end)
     end
     
     screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -161,6 +179,102 @@ local function createShopGui()
 end
 
 local currentShopGui = nil -- Store reference to the created GUI
+
+-- Active Power-Up Display GUI
+local activePowerUpGui = Instance.new("ScreenGui")
+activePowerUpGui.Name = "ActivePowerUpDisplayGui"
+activePowerUpGui.ResetOnSpawn = false
+activePowerUpGui.Parent = player:WaitForChild("PlayerGui")
+
+local activeEffectsContainer = Instance.new("Frame")
+activeEffectsContainer.Name = "ActiveEffectsContainer"
+activeEffectsContainer.Size = UDim2.new(0, 200, 0, 0) -- Width fixed, height will grow dynamically
+activeEffectsContainer.Position = UDim2.new(0, 10, 0, 70) -- Top-left, below default Roblox topbar
+activeEffectsContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+activeEffectsContainer.BackgroundTransparency = 0.7
+activeEffectsContainer.BorderSizePixel = 0
+activeEffectsContainer.ClipsDescendants = true
+activeEffectsContainer.Parent = activePowerUpGui
+
+local activeEffectsLayout = Instance.new("UIListLayout")
+activeEffectsLayout.Parent = activeEffectsContainer
+activeEffectsLayout.FillDirection = Enum.FillDirection.Vertical
+activeEffectsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+activeEffectsLayout.Padding = UDim.new(0, 5)
+activeEffectsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Table to keep track of active power-up labels
+local activePowerUpLabels = {}
+
+-- Function to update a power-up's countdown
+local function updatePowerUpCountdown(powerUpName, label, remainingTime)
+    if label and label.Parent then
+        label.Text = powerUpName .. ": " .. math.max(0, math.ceil(remainingTime)) .. "s"
+        if remainingTime <= 0 then
+            label:Destroy()
+            activePowerUpLabels[powerUpName] = nil
+        end
+    else
+        -- Label might have been destroyed by PowerUpEndedEvent
+        activePowerUpLabels[powerUpName] = nil
+    end
+end
+
+-- Listen for PowerUpActiveEvent from server
+PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)
+    print("Client: PowerUpActiveEvent received for", powerUpName, "with duration", duration)
+    -- Remove existing label if power-up is re-activated
+    if activePowerUpLabels[powerUpName] then
+        activePowerUpLabels[powerUpName]:Destroy()
+        activePowerUpLabels[powerUpName] = nil
+    end
+
+    local powerUpLabel = Instance.new("TextLabel")
+    powerUpLabel.Name = powerUpName .. "_ActiveDisplay"
+    powerUpLabel.Size = UDim2.new(1, 0, 0, 25) -- Fill width of container, fixed height
+    powerUpLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    powerUpLabel.BackgroundTransparency = 0.8
+    powerUpLabel.TextColor3 = Color3.new(1, 1, 1)
+    powerUpLabel.TextScaled = false
+    powerUpLabel.TextSize = 18
+    powerUpLabel.Font = Enum.Font.GothamBold
+    powerUpLabel.TextXAlignment = Enum.TextXAlignment.Left
+    powerUpLabel.Text = powerUpName .. ": " .. duration .. "s"
+    powerUpLabel.LayoutOrder = #activePowerUpLabels + 1 -- For UIListLayout sorting
+    powerUpLabel.Parent = activeEffectsContainer
+    
+    activePowerUpLabels[powerUpName] = powerUpLabel
+
+    -- Start client-side countdown
+    local startTime = tick()
+    local connection
+    connection = game:GetService("RunService").Heartbeat:Connect(function()
+        local remainingTime = duration - (tick() - startTime)
+        updatePowerUpCountdown(powerUpName, powerUpLabel, remainingTime)
+
+        if remainingTime <= 0 then
+            connection:Disconnect()
+            activePowerUpLabels[powerUpName] = nil
+            -- Adjust container size
+            activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
+        end
+    end)
+
+    -- Adjust container size to fit new label
+    activeEffectsContainer.Size = activeEffectsContainer.Size + UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
+end)
+
+-- Listen for PowerUpEndedEvent from server (for non-countdown related removal)
+PowerUpEndedEvent.OnClientEvent:Connect(function(powerUpName)
+    print("Client: PowerUpEndedEvent received for", powerUpName)
+    if activePowerUpLabels[powerUpName] then
+        local labelToDestroy = activePowerUpLabels[powerUpName]
+        activePowerUpLabels[powerUpName] = nil
+        labelToDestroy:Destroy()
+        -- Adjust container size
+        activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
+    end
+end)
 
 -- Listen for toggle event from server
 toggleShopEvent.OnClientEvent:Connect(function()

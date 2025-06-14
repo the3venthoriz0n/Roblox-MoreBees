@@ -22,6 +22,7 @@ POWER_UPS[1].Effect = function(character)
             if humanoid and humanoid.Parent then
                 humanoid.WalkSpeed = originalSpeed
             end
+            PowerUpEndedEvent:FireClient(Players:GetPlayerFromCharacter(character), POWER_UPS[1].Name) -- Signal end of effect
         end)
     end
 end
@@ -37,6 +38,7 @@ POWER_UPS[2].Effect = function(character)
                 humanoid.MaxHealth = originalMaxHealth
                 humanoid.Health = math.min(humanoid.Health, originalMaxHealth)
             end
+            PowerUpEndedEvent:FireClient(Players:GetPlayerFromCharacter(character), POWER_UPS[2].Name) -- Signal end of effect
         end)
     end
 end
@@ -49,6 +51,7 @@ POWER_UPS[3].Effect = function(character)
             if player then
                 player:SetAttribute("BeeShield", false)
             end
+            PowerUpEndedEvent:FireClient(player, POWER_UPS[3].Name) -- Signal end of effect
         end)
     end
 end
@@ -57,7 +60,7 @@ POWER_UPS[4].Effect = function(character)
     -- Fire the BindableEvent to request bee spawning
     local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
     if spawnBeesRequestEvent then
-        spawnBeesRequestEvent:Fire(10) -- Request to spawn 10 bees
+        spawnBeesRequestEvent:Fire(20) -- Request to spawn bees
     else
         warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
     end
@@ -72,6 +75,16 @@ shopEvent.Parent = ReplicatedStorage
 local purchaseFeedbackEvent = Instance.new("RemoteEvent")
 purchaseFeedbackEvent.Name = "PurchaseFeedbackEvent"
 purchaseFeedbackEvent.Parent = ReplicatedStorage
+
+-- New RemoteEvent for signaling active power-ups to the client
+local PowerUpActiveEvent = Instance.new("RemoteEvent")
+PowerUpActiveEvent.Name = "PowerUpActiveEvent"
+PowerUpActiveEvent.Parent = ReplicatedStorage
+
+-- New RemoteEvent for signaling power-up end to the client
+local PowerUpEndedEvent = Instance.new("RemoteEvent")
+PowerUpEndedEvent.Name = "PowerUpEndedEvent"
+PowerUpEndedEvent.Parent = ReplicatedStorage
 
 -- Function to get player's HoneyDrip count
 local function getPlayerHoneyDrips(player)
@@ -116,8 +129,14 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
         -- Notify player (server log)
         print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
 
-        -- Optionally, send success feedback to client
+        -- Send success feedback to client
         purchaseFeedbackEvent:FireClient(player, "Purchased " .. powerUp.Name .. "!")
+
+        -- Signal power-up active to client
+        if powerUp.Duration > 0 then
+            PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
+        end
+
     else
         -- Notify player (server log)
         print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
@@ -145,6 +164,12 @@ local function processRobuxReceipt(receiptInfo)
             -- Apply power-up effect
             powerUp.Effect(character)
             print(player.Name .. " successfully purchased " .. powerUp.Name .. " with Robux!")
+            
+            -- Signal power-up active to client
+            if powerUp.Duration > 0 then
+                PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
+            end
+
             return Enum.ProductPurchaseDecision.PurchaseGranted
         end
     end

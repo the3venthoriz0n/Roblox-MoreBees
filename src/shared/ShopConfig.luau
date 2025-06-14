@@ -27,12 +27,12 @@ ShopConfig.POWER_UPS_DATA = {
     },
     {
         Name = "Spawn Bees",
-        Description = "Spawns 10 additional bees",
-        Cost = 1, -- 1 HoneyDrip
-        RobuxCost = 10, -- 10 Robux
+        Description = "Spawns 20 additional bees",
+        Cost = 5, -- 1 HoneyDrip
+        RobuxCost = 25, -- 10 Robux
         ProductId = 44556, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 0, -- Instant effect
     }
 }
 
-return ShopConfig 
+return ShopConfig

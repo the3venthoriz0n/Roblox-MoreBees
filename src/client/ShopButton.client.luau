@@ -11,21 +11,22 @@ local function createShopButton()
     
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0, 150, 0, 50)
-    button.Position = UDim2.new(0.9, -160, 0.1, 10) -- Top right corner
-    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.Position = UDim2.new(1, -160, 1, -60) -- Lower right corner (with padding)
+    button.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Bright green for glow effect
     button.Text = "Shop"
     button.TextColor3 = Color3.new(1, 1, 1)
     button.TextScaled = true
     button.Font = Enum.Font.GothamBold
+    button.TextStrokeTransparency = 0.8 -- Subtle text stroke for definition
     button.Parent = screenGui
     
     -- Add hover effect
     button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        button.BackgroundColor3 = Color3.fromRGB(0, 200, 0) -- Brighter green on hover
     end)
     
     button.MouseLeave:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        button.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Return to original green
     end)
     
     -- Toggle shop visibility when clicked
