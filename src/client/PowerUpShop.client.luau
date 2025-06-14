@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Power-up definitions (must be consistent with server)
 local POWER_UPS = {
@@ -8,16 +9,22 @@ local POWER_UPS = {
         Name = "Speed Boost",
         Description = "Increases your movement speed by 50% for 30 seconds",
         Cost = 2,
+        RobuxCost = 5,
+        ProductId = 12345,
     },
     {
         Name = "Health Boost",
         Description = "Increases your max health by 50 for 1 minute",
         Cost = 3,
+        RobuxCost = 10,
+        ProductId = 67890,
     },
     {
         Name = "Bee Shield",
         Description = "Bees cannot sting you for 45 seconds",
         Cost = 4,
+        RobuxCost = 20,
+        ProductId = 11223,
     }
 }
 
@@ -46,6 +53,7 @@ local function createShopGui()
     title.Text = "Power-Up Shop"
     title.TextColor3 = Color3.new(1, 1, 1)
     title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
     title.Parent = frame
     
     local honeyDripCount = Instance.new("TextLabel")
@@ -56,6 +64,7 @@ local function createShopGui()
     honeyDripCount.Text = "HoneyDrips: 0"
     honeyDripCount.TextColor3 = Color3.new(1, 1, 1)
     honeyDripCount.TextScaled = true
+    honeyDripCount.Font = Enum.Font.GothamBold
     honeyDripCount.Parent = frame
     
     -- Update HoneyDrip count when it changes
@@ -119,17 +128,34 @@ local function createShopGui()
     local startY = 90
     
     for i, powerUp in ipairs(POWER_UPS) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, -20, 0, buttonHeight)
-        button.Position = UDim2.new(0, 10, 0, startY + (i-1) * (buttonHeight + spacing))
-        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        button.Text = powerUp.Name .. "\n" .. powerUp.Description .. "\nCost: " .. powerUp.Cost .. " HoneyDrips"
-        button.TextColor3 = Color3.new(1, 1, 1)
-        button.TextScaled = true
-        button.Parent = frame
+        -- HoneyDrip Purchase Button
+        local honeyDripButton = Instance.new("TextButton")
+        honeyDripButton.Size = UDim2.new(0.45, -5, 0, buttonHeight)
+        honeyDripButton.Position = UDim2.new(0, 10, 0, startY + (i-1) * (buttonHeight + spacing))
+        honeyDripButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        honeyDripButton.Text = powerUp.Name .. "\n" .. powerUp.Description .. "\nCost: " .. powerUp.Cost .. " HoneyDrips"
+        honeyDripButton.TextColor3 = Color3.new(1, 1, 1)
+        honeyDripButton.TextScaled = true
+        honeyDripButton.Font = Enum.Font.GothamBold
+        honeyDripButton.Parent = frame
         
-        button.MouseButton1Click:Connect(function()
+        honeyDripButton.MouseButton1Click:Connect(function()
             shopEvent:FireServer(i)
+        end)
+
+        -- Robux Purchase Button
+        local robuxButton = Instance.new("TextButton")
+        robuxButton.Size = UDim2.new(0.45, -5, 0, buttonHeight)
+        robuxButton.Position = UDim2.new(0.55, 0, 0, startY + (i-1) * (buttonHeight + spacing))
+        robuxButton.BackgroundColor3 = Color3.fromRGB(100, 40, 100) -- Purple color for Robux
+        robuxButton.Text = "Buy with Robux\n" .. powerUp.RobuxCost .. " R$"
+        robuxButton.TextColor3 = Color3.new(1, 1, 1)
+        robuxButton.TextScaled = true
+        robuxButton.Font = Enum.Font.GothamBold
+        robuxButton.Parent = frame
+
+        robuxButton.MouseButton1Click:Connect(function()
+            MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
         end)
     end
     

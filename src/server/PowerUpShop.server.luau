@@ -1,13 +1,16 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Power-up definitions
 local POWER_UPS = {
     {
         Name = "Speed Boost",
         Description = "Increases your movement speed by 50% for 30 seconds",
-        Cost = 2, -- HoneyDrips
-        Duration = 30, -- seconds
+        Cost = 2,
+        RobuxCost = 5, -- New Robux cost
+        ProductId = 12345, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
+        Duration = 30,
         Effect = function(character)
             local humanoid = character:FindFirstChild("Humanoid")
             if humanoid then
@@ -25,6 +28,8 @@ local POWER_UPS = {
         Name = "Health Boost",
         Description = "Increases your max health by 50 for 1 minute",
         Cost = 3,
+        RobuxCost = 10, -- New Robux cost
+        ProductId = 67890, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 60,
         Effect = function(character)
             local humanoid = character:FindFirstChild("Humanoid")
@@ -45,6 +50,8 @@ local POWER_UPS = {
         Name = "Bee Shield",
         Description = "Bees cannot sting you for 45 seconds",
         Cost = 4,
+        RobuxCost = 20, -- New Robux cost
+        ProductId = 11223, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 45,
         Effect = function(character)
             local player = Players:GetPlayerFromCharacter(character)
@@ -89,7 +96,7 @@ local function updatePlayerHoneyDrips(player, newAmount)
     end
 end
 
--- Handle shop purchases
+-- Handle shop purchases (HoneyDrips)
 shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
     local character = player.Character
     if not character then return end
@@ -108,9 +115,36 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
         -- Notify player
         print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
     else
-        print(player.Name .. " tried to purchase " .. powerUp.Name .. " but only has " .. currentHoneyDrips .. " HoneyDrips")
+        print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
     end
 end)
+
+-- Handle Robux purchases
+local function processRobuxReceipt(receiptInfo)
+    local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+    if not player then
+        return Enum.ProductPurchaseDecision.NotProcessedYet -- Player not in game
+    end
+
+    local character = player.Character
+    if not character then
+        return Enum.ProductPurchaseDecision.NotProcessedYet -- Character not loaded yet
+    end
+
+    -- Find the power-up associated with the product ID
+    for _, powerUp in ipairs(POWER_UPS) do
+        if powerUp.ProductId == receiptInfo.ProductId then
+            -- Apply power-up effect
+            powerUp.Effect(character)
+            print(player.Name .. " successfully purchased " .. powerUp.Name .. " with Robux!")
+            return Enum.ProductPurchaseDecision.PurchaseGranted
+        end
+    end
+
+    return Enum.ProductPurchaseDecision.NotProcessedYet -- Product ID not recognized
+end
+
+MarketplaceService.ProcessReceipt = processRobuxReceipt
 
 -- Create RemoteEvent for toggling shop visibility
 local toggleShopEvent = Instance.new("RemoteEvent")
