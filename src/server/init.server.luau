@@ -75,10 +75,10 @@ end
 local function createFlyingCube()
     debugPrint("Attempting to create flying bee...")
     
-    -- Get the bee model from Workspace, as per your model's location
-    local beeModel = workspace:FindFirstChild("Bee")
+    -- Get the bee model from ReplicatedStorage, as per your model's new location
+    local beeModel = ReplicatedStorage:FindFirstChild("Bee")
     if not beeModel then
-        warn("Bee model not found in Workspace! Please add a bee model named 'Bee' to Workspace.")
+        warn("Bee model not found in ReplicatedStorage! Please add a bee model named 'Bee' to ReplicatedStorage.")
         return nil
     end
     
@@ -342,20 +342,21 @@ local function createFlyingCube()
                         if bodyGyro then bodyGyro:Destroy() end
                         if connection then connection:Disconnect() end
                         
-                        -- Optional: Change color to indicate it's dead
+                        -- Make the bee fall to the ground and become solid
                         for _, part in ipairs(bee:GetDescendants()) do
                             if part:IsA("BasePart") then
                                 part.CanCollide = true
                                 part.Material = Enum.Material.SmoothPlastic
                                 part.Transparency = 0.5
+                                part.Anchored = false -- Ensure it can fall
                             end
                         end
 
                         -- Update the bee count display immediately after a bee "dies"
                         updateBeeCount()
 
-                        -- Destroy the bee model after it dies
-                        bee:Destroy()
+                        -- Remove the Destroy call, allowing the bee to fall
+                        -- bee:Destroy() -- REMOVED
 
                         -- Chance to spawn a new bee when this one "dies" (only if swarm is enabled)
                         if swarm then
@@ -371,12 +372,6 @@ local function createFlyingCube()
                 end
             end
         end
-    end)
-
-    -- Listen for the bee being destroyed to update the count
-    bee.Destroying:Connect(function()
-        debugPrint("Bee being destroyed, updating count")
-        updateBeeCount()
     end)
 
     return bee
