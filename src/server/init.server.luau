@@ -545,8 +545,20 @@ end
 -- Clone the HoneyJar model
 healthPack = healthPack:Clone()
 healthPack.Name = "HealthPack"
-healthPack.Position = Vector3.new(-5, 5, 0) -- Raised height to 5
 healthPack.Parent = workspace
+
+-- Find the Handle part
+local primaryPart = healthPack:FindFirstChild("Handle")
+if not primaryPart then
+    warn("No 'Handle' part found in HoneyJar model!")
+    return
+end
+
+-- Set the PrimaryPart to the Handle
+healthPack.PrimaryPart = primaryPart
+
+-- Position the entire model
+primaryPart.Position = Vector3.new(-5, 5, 0) -- Raised height to 5
 
 -- Make all parts non-collidable but not anchored
 for _, part in ipairs(healthPack:GetDescendants()) do
@@ -556,7 +568,6 @@ for _, part in ipairs(healthPack:GetDescendants()) do
 end
 
 -- Add floating behavior
-local primaryPart = healthPack.PrimaryPart or healthPack:FindFirstChildWhichIsA("BasePart")
 if primaryPart then
     -- Add BodyPosition for floating
     local bodyPosition = Instance.new("BodyPosition")
@@ -566,7 +577,7 @@ if primaryPart then
     bodyPosition.Position = primaryPart.Position
     bodyPosition.Parent = primaryPart
 
-    -- Add BodyGyro for rotation
+    -- Add BodyGyro to keep it upright
     local bodyGyro = Instance.new("BodyGyro")
     bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
     bodyGyro.P = 1000
@@ -574,20 +585,17 @@ if primaryPart then
     bodyGyro.CFrame = primaryPart.CFrame
     bodyGyro.Parent = primaryPart
 
-    -- Add slight bobbing motion
+    -- Simple bobbing motion
     local startTime = tick()
     RunService.Heartbeat:Connect(function()
         if not primaryPart.Parent then return end
         
-        -- Calculate bobbing offset
+        -- Gentle bobbing motion
         local time = tick() - startTime
-        local bobOffset = math.sin(time * 2) * 0.5 -- 0.5 studs up and down
+        local bobOffset = math.sin(time * 1.5) * 0.3 -- Slower and smaller bobbing motion
         
         -- Update position with bobbing
         bodyPosition.Position = Vector3.new(-5, 5 + bobOffset, 0)
-        
-        -- Slowly rotate
-        bodyGyro.CFrame = CFrame.new(primaryPart.Position) * CFrame.Angles(0, time * 0.5, 0)
     end)
 end
 
@@ -600,15 +608,16 @@ healthPrompt.ActionText = "Heal"
 healthPrompt.ObjectText = "Honey Jar"
 healthPrompt.HoldDuration = 0.5
 healthPrompt.MaxActivationDistance = 10
-healthPrompt.Parent = primaryPart or healthPack
+healthPrompt.RequiresLineOfSight = true -- Only allow interaction when player can see the jar
+healthPrompt.Parent = primaryPart
 
 -- Create billboard GUI for cooldown timer
 local billboardGui = Instance.new("BillboardGui")
 billboardGui.Name = "CooldownTimer"
-billboardGui.Size = UDim2.new(0, 200, 0, 100) -- Increased size for better visibility
-billboardGui.StudsOffset = Vector3.new(0, 4, 0) -- Raised higher above health pack
-billboardGui.Adornee = primaryPart or healthPack
-billboardGui.Parent = primaryPart or healthPack
+billboardGui.Size = UDim2.new(0, 100, 0, 50) -- Smaller size for better centering
+billboardGui.StudsOffset = Vector3.new(0, 1.5, 0) -- Position centered above the jar
+billboardGui.Adornee = primaryPart
+billboardGui.Parent = primaryPart
 
 local timerText = Instance.new("TextLabel")
 timerText.Name = "TimerText"
@@ -628,6 +637,8 @@ local HEAL_AMOUNT = 25 -- Amount of health to restore
 
 -- Function to update cooldown timer
 local function updateCooldownTimer()
+    if not primaryPart or not primaryPart.Parent then return end -- Safety check
+    
     local currentTime = tick()
     local timeSinceLastHeal = currentTime - lastHealTime
     local remainingCooldown = math.max(0, HEAL_COOLDOWN - timeSinceLastHeal)
@@ -635,17 +646,21 @@ local function updateCooldownTimer()
     if remainingCooldown > 0 then
         timerText.Text = string.format("%.1f", remainingCooldown)
         timerText.TextColor3 = Color3.new(1, 0, 0) -- Red when on cooldown
+        healthPrompt.Enabled = false -- Disable prompt during cooldown
     else
         timerText.Text = "Health"
         timerText.TextColor3 = Color3.new(0, 1, 0) -- Green when ready
+        healthPrompt.Enabled = true -- Enable prompt when ready
     end
 end
 
 -- Update timer every frame
 local cooldownConnection
 cooldownConnection = RunService.Heartbeat:Connect(function()
-    if not healthPack.Parent then
-        cooldownConnection:Disconnect()
+    if not primaryPart or not primaryPart.Parent then
+        if cooldownConnection then
+            cooldownConnection:Disconnect()
+        end
         return
     end
     updateCooldownTimer()
@@ -653,6 +668,8 @@ end)
 
 -- Handle health pack trigger
 healthPrompt.Triggered:Connect(function(player)
+    if not primaryPart or not primaryPart.Parent then return end -- Safety check
+    
     local currentTime = tick()
     if currentTime - lastHealTime >= HEAL_COOLDOWN then
         lastHealTime = currentTime
@@ -673,13 +690,35 @@ healthPrompt.Triggered:Connect(function(player)
                     for _, part in ipairs(healthPack:GetDescendants()) do
                         if part:IsA("BasePart") then
                             part.BrickColor = BrickColor.new("Bright green")
+                            -- Add a brief glow effect
+                            local originalMaterial = part.Material
+                            part.Material = Enum.Material.Neon
+                            task.delay(0.2, function()
+                                if part.Parent then
+                                    part.Material = originalMaterial
+                                    part.BrickColor = BrickColor.new("Really red")
+                                end
+                            end)
                         end
                     end
-                    task.delay(0.2, function()
-                        for _, part in ipairs(healthPack:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.BrickColor = BrickColor.new("Really red")
-                            end
+                    
+                    -- Play a healing sound if available
+                    local healSound = healthPack:FindFirstChild("HealSound")
+                    if not healSound then
+                        healSound = Instance.new("Sound")
+                        healSound.Name = "HealSound"
+                        healSound.SoundId = "rbxassetid://9114827380" -- Default healing sound
+                        healSound.Volume = 0.5
+                        healSound.Parent = healthPack
+                    end
+                    healSound:Play()
+                else
+                    -- Player is at full health
+                    timerText.Text = "Full Health"
+                    timerText.TextColor3 = Color3.new(1, 1, 0) -- Yellow for full health
+                    task.delay(1, function()
+                        if timerText.Parent then
+                            updateCooldownTimer()
                         end
                     end)
                 end
