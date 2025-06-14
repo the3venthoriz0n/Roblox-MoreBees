@@ -330,6 +330,12 @@ local function createFlyingCube()
         if character and character:FindFirstChild("Humanoid") then
             local player = Players:GetPlayerFromCharacter(character)
             if player then
+                -- Check if player has Bee Shield power-up
+                if player:GetAttribute("BeeShield") then
+                    debugPrint("Player has Bee Shield, no damage applied")
+                    return
+                end
+
                 debugPrint("Bee touched player:", player.Name)
                 local now = tick()
                 local lastSting = lastStingTimes[player] or 0
@@ -359,9 +365,6 @@ local function createFlyingCube()
 
                         -- Update the bee count display immediately after a bee "dies"
                         updateBeeCount()
-
-                        -- Remove the Destroy call, allowing the bee to fall
-                        -- bee:Destroy() -- REMOVED
 
                         -- Chance to spawn a new bee when this one "dies" (only if swarm is enabled)
                         if swarm then
