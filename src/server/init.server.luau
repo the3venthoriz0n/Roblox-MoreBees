@@ -4,6 +4,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
+local ServerStorage = game:GetService("ServerStorage") -- Get ServerStorage
+local Debris = game:GetService("Debris") -- Get Debris Service
+
+local SoundsFolder = ServerStorage:FindFirstChild("Sounds")
+if not SoundsFolder then
+    warn("Sounds folder not found in ServerStorage. Please ensure your audio assets are placed in ServerStorage/Sounds.")
+    -- Create a dummy folder or handle gracefully if sounds are missing
+    SoundsFolder = Instance.new("Folder")
+    SoundsFolder.Name = "Sounds"
+    SoundsFolder.Parent = ServerStorage
+end
 
 print("Services initialized")
 
@@ -18,6 +29,44 @@ local function debugPrint(...)
 end
 
 debugPrint("Debug mode enabled")
+
+-- Audio Setup
+local buzSounds = {}
+for i = 1, 3 do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
+    local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_buz" .. (i > 1 and tostring(i) or ""))
+    if sound then
+        table.insert(buzSounds, sound)
+    else
+        warn("Buz sound not found: robloxMoreBeesAudio_buz" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
+    end
+end
+debugPrint("Found ", #buzSounds, " buz sounds.")
+
+local stingSounds = {}
+for i = 1, 5 do -- Assuming robloxMoreBeesAudio_sting, _sting2, ..., _sting5
+    local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_sting" .. (i > 1 and tostring(i) or ""))
+    if sound then
+        table.insert(stingSounds, sound)
+    else
+        warn("Sting sound not found: robloxMoreBeesAudio_sting" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
+    end
+end
+debugPrint("Found ", #stingSounds, " sting sounds.")
+
+local honeyDripSounds = {}
+for i = 1, 3 do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
+    local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or ""))
+    if sound then
+        table.insert(honeyDripSounds, sound)
+    else
+        warn("HoneyDrip sound not found: robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
+    end
+end
+debugPrint("Found ", #honeyDripSounds, " HoneyDrip sounds.")
+
+if #buzSounds == 0 then warn("No buz sounds found in ServerStorage!") end
+if #stingSounds == 0 then warn("No sting sounds found in ServerStorage!") end
+if #honeyDripSounds == 0 then warn("No HoneyDrip sounds found in ServerStorage!") end
 
 -- Spawn control
 local swarm = false -- Set to true to enable bee swarming behavior
@@ -133,6 +182,17 @@ local function createFlyingCube(customColor)
             weldConstraint.Parent = part -- Parent to the child part
             debugPrint("WeldConstraint created between ", primaryPart.Name, " and ", part.Name)
         end
+    end
+
+    -- Add buz sound
+    local buzSound = nil
+    if #buzSounds > 0 then
+        local chosenBuzSound = buzSounds[math.random(1, #buzSounds)]:Clone()
+        chosenBuzSound.Parent = primaryPart -- Parent to primary part to ensure it moves with bee
+        chosenBuzSound.Looped = true
+        chosenBuzSound:Play()
+    else
+        warn("No buz sounds available to play!")
     end
 
     -- Add IsAlive status
@@ -354,6 +414,20 @@ local function createFlyingCube(customColor)
                     if humanoid and humanoid.Health > 0 then
                         debugPrint("Stinging player for 10 damage!")
                         humanoid:TakeDamage(10)
+
+                        -- Play sting sound
+                        if #stingSounds > 0 then
+                            local chosenStingSound = stingSounds[math.random(1, #stingSounds)]:Clone()
+                            chosenStingSound.Parent = primaryPart -- Play sound from bee's location
+                            chosenStingSound.Playing = true -- Play immediately
+                            game:GetService("Debris"):AddItem(chosenStingSound, chosenStingSound.TimeLength + 1) -- Clean up sound
+                        end
+
+                        -- Stop buz sound if it exists
+                        if buzSound then
+                            buzSound:Stop()
+                            buzSound:Destroy()
+                        end
 
                         -- Bee "dies" after stinging
                         isBeeDead = true
@@ -694,62 +768,44 @@ local function createHoneyDrip()
         debugPrint("Found existing ProximityPrompt on HoneyDrip")
         -- Connect the Triggered event for the prompt
         prompt.Triggered:Connect(function(player)
-            debugPrint("HoneyDrip Triggered event fired for player:", player.Name)
-            -- Give HoneyDrip to player's inventory (using leaderstats for simplicity)
-            local leaderstats = player:FindFirstChild("leaderstats")
-            if leaderstats then
-                local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-                if not honeyDrips then
-                    honeyDrips = Instance.new("IntValue")
-                    honeyDrips.Name = "HoneyDrips"
-                    honeyDrips.Value = 0
-                    honeyDrips.Parent = leaderstats
-                    debugPrint("Created new HoneyDrips IntValue for ", player.Name)
-                end
-                honeyDrips.Value = honeyDrips.Value + 1
-                debugPrint(player.Name, " collected a HoneyDrip. Total: ", honeyDrips.Value)
-
-                -- Give health bump to the player
-                local character = player.Character
-                if character then
-                    local humanoid = character:FindFirstChild("Humanoid")
-                    if humanoid then
-                        if humanoid.Health < humanoid.MaxHealth then
-                            local newHealth = math.min(humanoid.MaxHealth, humanoid.Health + HEAL_AMOUNT_HONEYDRIP)
-                            humanoid.Health = newHealth
-                            debugPrint("Healed player:", player.Name, " by ", HEAL_AMOUNT_HONEYDRIP, " health. New health:", newHealth)
-                        else
-                            debugPrint(player.Name, " is already at full health. No healing applied.")
+            debugPrint("HoneyDrip picked up by ", player.Name)
+            local character = player.Character
+            if character and character:FindFirstChildOfClass("Humanoid") then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid.Health < humanoid.MaxHealth then
+                    humanoid.Health = math.min(humanoid.Health + HEAL_AMOUNT_HONEYDRIP, humanoid.MaxHealth)
+                    debugPrint(player.Name, " healed by HoneyDrip. Current health:", humanoid.Health)
+                    
+                    -- Visual feedback: brief color flash
+                    local originalColor = player.Character.HumanoidRootPart.BrickColor
+                    player.Character.HumanoidRootPart.BrickColor = BrickColor.new("Bright green")
+                    task.delay(0.1, function() -- Flash for 0.1 seconds
+                        if player.Character and player.Character.HumanoidRootPart then
+                            player.Character.HumanoidRootPart.BrickColor = originalColor
                         end
+                    end)
+
+                    -- Play HoneyDrip pickup sound
+                    if #honeyDripSounds > 0 then
+                        local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
+                        chosenDripSound.Parent = newDrip -- Parent to the picked up drip
+                        chosenDripSound.Volume = 0.7 -- Set a default volume
+                        debugPrint("Attempting to play HoneyDrip sound: ", chosenDripSound.Name)
+                        chosenDripSound:Play()
+                        Debris:AddItem(chosenDripSound, chosenDripSound.TimeLength) -- Clean up sound after playing
+                    else
+                        warn("No HoneyDrip sounds available to play!")
                     end
+                else
+                    debugPrint(player.Name, " is already at full health. No healing needed.")
                 end
-
-                -- Visual effect for pickup
-                local originalBrickColor = newDrip.BrickColor
-                newDrip.BrickColor = BrickColor.new("Really yellow")
-                task.delay(0.1, function()
-                    if newDrip then
-                        newDrip.BrickColor = originalBrickColor
-                    end
-                end)
-
-                -- Play a pickup sound
-                local pickupSound = newDrip:FindFirstChild("PickupSound")
-                if not pickupSound then
-                    pickupSound = Instance.new("Sound")
-                    pickupSound.Name = "PickupSound"
-                    pickupSound.SoundId = "rbxassetid://9114827380"
-                    pickupSound.Volume = 0.5
-                    pickupSound.Parent = newDrip
-                end
-                pickupSound:Play()
-
-                -- Destroy the HoneyDrip from the workspace
-                newDrip:Destroy()
-                debugPrint("HoneyDrip item destroyed.")
             else
-                warn("Leaderstats not found for player ", player.Name, ". Cannot add HoneyDrip or heal.")
+                warn("Player character or Humanoid not found for healing.")
             end
+            
+            -- Destroy the HoneyDrip after pickup
+            newDrip:Destroy()
+            debugPrint("HoneyDrip destroyed after pickup.")
         end)
     else
         warn("No ProximityPrompt found on HoneyDrip template!")
