@@ -3,38 +3,11 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local MarketplaceService = game:GetService("MarketplaceService")
 
--- Power-up definitions (must be consistent with server)
-local POWER_UPS = {
-    {
-        Name = "Speed Boost",
-        Description = "Increases your movement speed by 50% for 30 seconds",
-        Cost = 2,
-        RobuxCost = 5,
-        ProductId = 12345,
-    },
-    {
-        Name = "Health Boost",
-        Description = "Increases your max health by 50 for 1 minute",
-        Cost = 3,
-        RobuxCost = 10,
-        ProductId = 67890,
-    },
-    {
-        Name = "Bee Shield",
-        Description = "Bees cannot sting you for 45 seconds",
-        Cost = 4,
-        RobuxCost = 20,
-        ProductId = 11223,
-    },
-    -- New Power-Up: Spawn 10 Bees
-    {
-        Name = "Spawn Bees",
-        Description = "Spawns 10 additional bees",
-        Cost = 1, -- 1 HoneyDrip
-        RobuxCost = 10, -- 10 Robux
-        ProductId = 44556, -- Must match server ProductId
-    }
-}
+-- Require the shared shop configuration
+local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
+print("Client: ShopConfig is ", ShopConfig)
+print("Client: ShopConfig.POWER_UPS_DATA is ", ShopConfig.POWER_UPS_DATA)
+local POWER_UPS = ShopConfig.POWER_UPS_DATA
 
 -- Get RemoteEvents
 local shopEvent = ReplicatedStorage:WaitForChild("PowerUpShopEvent")

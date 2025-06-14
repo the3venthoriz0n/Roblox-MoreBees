@@ -2,88 +2,66 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
--- Power-up definitions
-local POWER_UPS = {
-    {
-        Name = "Speed Boost",
-        Description = "Increases your movement speed by 50% for 30 seconds",
-        Cost = 2,
-        RobuxCost = 5, -- New Robux cost
-        ProductId = 12345, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
-        Duration = 30,
-        Effect = function(character)
-            local humanoid = character:FindFirstChild("Humanoid")
-            if humanoid then
-                local originalSpeed = humanoid.WalkSpeed
-                humanoid.WalkSpeed = originalSpeed * 1.5
-                task.delay(30, function()
-                    if humanoid and humanoid.Parent then
-                        humanoid.WalkSpeed = originalSpeed
-                    end
-                end)
+-- Require the shared shop configuration data
+local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
+
+-- Define server-side POWER_UPS with effects (durations will come from ShopConfig)
+-- This table will combine the shared data with server-specific logic
+local POWER_UPS = {}
+for i, data in ipairs(ShopConfig.POWER_UPS_DATA) do
+    POWER_UPS[i] = table.clone(data) -- Copy shared data including Duration
+end
+
+-- Add server-side effects to the copied power-up data
+POWER_UPS[1].Effect = function(character)
+    local humanoid = character:FindFirstChild("Humanoid")
+    if humanoid then
+        local originalSpeed = humanoid.WalkSpeed
+        humanoid.WalkSpeed = originalSpeed * 1.5
+        task.delay(POWER_UPS[1].Duration, function()
+            if humanoid and humanoid.Parent then
+                humanoid.WalkSpeed = originalSpeed
             end
-        end
-    },
-    {
-        Name = "Health Boost",
-        Description = "Increases your max health by 50 for 1 minute",
-        Cost = 3,
-        RobuxCost = 10, -- New Robux cost
-        ProductId = 67890, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
-        Duration = 60,
-        Effect = function(character)
-            local humanoid = character:FindFirstChild("Humanoid")
-            if humanoid then
-                local originalMaxHealth = humanoid.MaxHealth
-                humanoid.MaxHealth = originalMaxHealth + 50
-                humanoid.Health = humanoid.Health + 50
-                task.delay(60, function()
-                    if humanoid and humanoid.Parent then
-                        humanoid.MaxHealth = originalMaxHealth
-                        humanoid.Health = math.min(humanoid.Health, originalMaxHealth)
-                    end
-                end)
+        end)
+    end
+end
+
+POWER_UPS[2].Effect = function(character)
+    local humanoid = character:FindFirstChild("Humanoid")
+    if humanoid then
+        local originalMaxHealth = humanoid.MaxHealth
+        humanoid.MaxHealth = originalMaxHealth + 50
+        humanoid.Health = humanoid.Health + 50
+        task.delay(POWER_UPS[2].Duration, function()
+            if humanoid and humanoid.Parent then
+                humanoid.MaxHealth = originalMaxHealth
+                humanoid.Health = math.min(humanoid.Health, originalMaxHealth)
             end
-        end
-    },
-    {
-        Name = "Bee Shield",
-        Description = "Bees cannot sting you for 45 seconds",
-        Cost = 4,
-        RobuxCost = 20, -- New Robux cost
-        ProductId = 11223, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
-        Duration = 45,
-        Effect = function(character)
-            local player = Players:GetPlayerFromCharacter(character)
+        end)
+    end
+end
+
+POWER_UPS[3].Effect = function(character)
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        player:SetAttribute("BeeShield", true)
+        task.delay(POWER_UPS[3].Duration, function()
             if player then
-                player:SetAttribute("BeeShield", true)
-                task.delay(45, function()
-                    if player then
-                        player:SetAttribute("BeeShield", false)
-                    end
-                end)
+                player:SetAttribute("BeeShield", false)
             end
-        end
-    },
-    -- New Power-Up: Spawn 10 Bees
-    {
-        Name = "Spawn Bees",
-        Description = "Spawns 10 additional bees",
-        Cost = 1, -- 1 HoneyDrip
-        RobuxCost = 10, -- 10 Robux
-        ProductId = 44556, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
-        Duration = 0, -- Instant effect
-        Effect = function(character)
-            -- Fire the BindableEvent to request bee spawning
-            local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
-            if spawnBeesRequestEvent then
-                spawnBeesRequestEvent:Fire(10) -- Request to spawn 10 bees
-            else
-                warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
-            end
-        end
-    }
-}
+        end)
+    end
+end
+
+POWER_UPS[4].Effect = function(character)
+    -- Fire the BindableEvent to request bee spawning
+    local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
+    if spawnBeesRequestEvent then
+        spawnBeesRequestEvent:Fire(10) -- Request to spawn 10 bees
+    else
+        warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
+    end
+end
 
 -- Create RemoteEvent for shop interactions
 local shopEvent = Instance.new("RemoteEvent")
