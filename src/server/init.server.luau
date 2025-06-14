@@ -21,7 +21,7 @@ debugPrint("Debug mode enabled")
 
 -- Spawn control
 local swarm = false -- Set to true to enable bee swarming behavior
-local AUTO_SPAWN_INTERVAL = 10 -- Spawn a bee every 10 seconds
+local AUTO_SPAWN_INTERVAL = 1 -- Spawn a bee every 10 seconds
 local BASE_MIN_BEES = 10 -- Base minimum number of bees
 local BEES_PER_PLAYER = 1 -- Additional bees per player
 local MIN_SPAWN_INTERVAL = 1 -- Spawn every second when below minimum
@@ -277,28 +277,9 @@ end)
                     if humanoid and humanoid.Health > 0 then
                         debugPrint("Stinging player for 20 damage!")
                         humanoid:TakeDamage(20)
-
-                        -- Cube "dies" after stinging
-                        isCubeDead = true
-                        isAlive.Value = 0 -- Mark as dead
-                        if bodyPosition then bodyPosition:Destroy() end
-                        if bodyGyro then bodyGyro:Destroy() end
-                        if connection then connection:Disconnect() end -- Disconnect Heartbeat
-                        cube.CanCollide = true -- Ensure it can collide with the ground
-                        -- Optional: Change color to indicate it's dead
-                        cube.BrickColor = BrickColor.new("Dark stone grey")
-                        cube.Transparency = 0.5
-
-                        -- Update the bee count display immediately after a bee "dies"
-                        beeCountDisplay.Value = "Bees: " .. getBeeCount()
-
-                        -- Chance to spawn a new cube when this one "dies" (only if swarm is enabled)
-                        if swarm then
-                            local spawnChance = 50 -- 50% chance
-                            if math.random(1, 100) <= spawnChance then
-                                createFlyingCube()
-                            end
-                        end
+                        
+                        -- Handle bee death
+                        handleBeeDeath(cube)
                     end
                 end
             end
@@ -423,6 +404,52 @@ local function getBeeCount()
     return count
 end
 
+-- Function to update bee count display
+local function updateBeeCount()
+    if beeCountDisplay then
+        beeCountDisplay.Value = "Bees: " .. getBeeCount()
+    end
+end
+
+-- Function to handle bee death
+local function handleBeeDeath(bee)
+    if not bee then return end
+    
+    -- Mark as dead
+    local isAlive = bee:FindFirstChild("IsAlive")
+    if isAlive then
+        isAlive.Value = 0
+    end
+    
+    -- Remove physics
+    for _, part in ipairs(bee:GetDescendants()) do
+        if part:IsA("BodyMover") then
+            part:Destroy()
+        end
+    end
+    
+    -- Visual changes
+    for _, part in ipairs(bee:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+            part.BrickColor = BrickColor.new("Dark stone grey")
+            part.Transparency = 0.5
+        end
+    end
+    
+    -- Update count
+    updateBeeCount()
+    
+    -- Chance to spawn new bee if swarm is enabled
+    if swarm then
+        local spawnChance = 50 -- 50% chance
+        if math.random(1, 100) <= spawnChance then
+            createFlyingCube()
+            updateBeeCount()
+        end
+    end
+end
+
 -- Add RemoteEvent for spawning cubes from client
 local spawnCubeEvent = Instance.new("RemoteEvent")
 spawnCubeEvent.Name = "SpawnCube"
@@ -431,13 +458,13 @@ spawnCubeEvent.Parent = ReplicatedStorage
 -- Listen for spawn requests from client
 spawnCubeEvent.OnServerEvent:Connect(function(player)
     createFlyingCube()
-    beeCountDisplay.Value = "Bees: " .. getBeeCount() -- Update count immediately after manual spawn
+    updateBeeCount() -- Update count immediately after manual spawn
 end)
 
 -- Spawn the first cube when the game starts
 print("Starting flying cube spawn...")
 createFlyingCube()
-beeCountDisplay.Value = "Bees: " .. getBeeCount() -- Update count immediately after initial spawn
+updateBeeCount() -- Update count immediately after initial spawn
 
 -- Create a spawn button
 print("Creating spawn button...")
@@ -528,24 +555,59 @@ end)
 
 -- Create a health pack
 print("Creating health pack...")
-local healthPack = ReplicatedStorage:FindFirstChild("HoneyDipper")
+local healthPack = ReplicatedStorage:FindFirstChild("HoneyJar")
 if not healthPack then
-    warn("HoneyDipper model not found in ReplicatedStorage! Please add the HoneyDipper model to ReplicatedStorage.")
+    warn("HoneyJar model not found in ReplicatedStorage! Please add the HoneyJar model to ReplicatedStorage.")
     return
 end
 
--- Clone the HoneyDipper model
+-- Clone the HoneyJar model
 healthPack = healthPack:Clone()
 healthPack.Name = "HealthPack"
 healthPack.Position = Vector3.new(-5, 5, 0) -- Raised height to 5
 healthPack.Parent = workspace
 
--- Make all parts anchored and non-collidable
+-- Make all parts non-collidable but not anchored
 for _, part in ipairs(healthPack:GetDescendants()) do
     if part:IsA("BasePart") then
-        part.Anchored = true
         part.CanCollide = false
     end
+end
+
+-- Add floating behavior
+local primaryPart = healthPack.PrimaryPart or healthPack:FindFirstChildWhichIsA("BasePart")
+if primaryPart then
+    -- Add BodyPosition for floating
+    local bodyPosition = Instance.new("BodyPosition")
+    bodyPosition.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+    bodyPosition.P = 1000
+    bodyPosition.D = 100
+    bodyPosition.Position = primaryPart.Position
+    bodyPosition.Parent = primaryPart
+
+    -- Add BodyGyro for rotation
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+    bodyGyro.P = 1000
+    bodyGyro.D = 100
+    bodyGyro.CFrame = primaryPart.CFrame
+    bodyGyro.Parent = primaryPart
+
+    -- Add slight bobbing motion
+    local startTime = tick()
+    RunService.Heartbeat:Connect(function()
+        if not primaryPart.Parent then return end
+        
+        -- Calculate bobbing offset
+        local time = tick() - startTime
+        local bobOffset = math.sin(time * 2) * 0.5 -- 0.5 studs up and down
+        
+        -- Update position with bobbing
+        bodyPosition.Position = Vector3.new(-5, 5 + bobOffset, 0)
+        
+        -- Slowly rotate
+        bodyGyro.CFrame = CFrame.new(primaryPart.Position) * CFrame.Angles(0, time * 0.5, 0)
+    end)
 end
 
 print("Health pack created")
@@ -554,18 +616,18 @@ print("Health pack created")
 local healthPrompt = Instance.new("ProximityPrompt")
 healthPrompt.Name = "HealthPackPrompt"
 healthPrompt.ActionText = "Heal"
-healthPrompt.ObjectText = "Honey Dipper"
+healthPrompt.ObjectText = "Honey Jar"
 healthPrompt.HoldDuration = 0.5
 healthPrompt.MaxActivationDistance = 10
-healthPrompt.Parent = healthPack.PrimaryPart or healthPack
+healthPrompt.Parent = primaryPart or healthPack
 
 -- Create billboard GUI for cooldown timer
 local billboardGui = Instance.new("BillboardGui")
 billboardGui.Name = "CooldownTimer"
 billboardGui.Size = UDim2.new(0, 200, 0, 100) -- Increased size for better visibility
 billboardGui.StudsOffset = Vector3.new(0, 4, 0) -- Raised higher above health pack
-billboardGui.Adornee = healthPack.PrimaryPart or healthPack
-billboardGui.Parent = healthPack.PrimaryPart or healthPack
+billboardGui.Adornee = primaryPart or healthPack
+billboardGui.Parent = primaryPart or healthPack
 
 local timerText = Instance.new("TextLabel")
 timerText.Name = "TimerText"
@@ -676,7 +738,7 @@ local function startAutoSpawner()
         end
         
         -- Update the bee count display value
-        beeCountDisplay.Value = "Bees: " .. currentBees
+        updateBeeCount()
         
         task.wait(spawnInterval)
     end
@@ -692,6 +754,6 @@ end)
 -- Listen for bees being removed from the workspace to update the count immediately
 workspace.ChildRemoved:Connect(function(child)
     if child.Name == "FlyingCube" then
-        beeCountDisplay.Value = "Bees: " .. getBeeCount()
+        updateBeeCount()
     end
 end)
