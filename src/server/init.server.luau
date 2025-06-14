@@ -77,7 +77,7 @@ local function updateBeeCount()
 end
 
 -- Function to create and spawn a flying bee that follows the closest player
-local function createFlyingCube()
+local function createFlyingCube(customColor)
     debugPrint("Attempting to create flying bee...")
     
     -- Get the bee model from ReplicatedStorage, as per your model's new location
@@ -104,6 +104,15 @@ local function createFlyingCube()
         end
     end
     bee.PrimaryPart = primaryPart -- Ensure the model's PrimaryPart is set
+
+    -- Apply custom color if provided
+    if customColor and typeof(customColor) == "BrickColor" then
+        for _, part in ipairs(bee:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.BrickColor = customColor
+            end
+        end
+    end
 
     -- Assign Bee to its collision group and ensure all parts are non-collidable and unanchored
     for _, part in ipairs(bee:GetDescendants()) do
@@ -786,10 +795,10 @@ SpawnBeesRequestEvent.Name = "SpawnBeesRequestEvent"
 SpawnBeesRequestEvent.Parent = ReplicatedStorage
 
 -- Function to spawn multiple bees (called via BindableEvent)
-local function spawnMultipleBees(count)
+local function spawnMultipleBees(count, color)
     for i = 1, count do
         task.spawn(function()
-            createFlyingCube()
+            createFlyingCube(color)
         end)
     end
     updateBeeCount()

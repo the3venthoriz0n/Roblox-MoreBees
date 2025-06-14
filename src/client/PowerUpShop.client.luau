@@ -22,9 +22,11 @@ local function createShopGui()
     screenGui.Enabled = false -- Start with GUI hidden
     
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 300, 0, 400)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+    frame.Size = UDim2.new(0.6, 0, 0.7, 0) -- Made bigger and responsive (60% width, 70% height of screen)
+    frame.Position = UDim2.new(0.5, -frame.Size.X.Offset/2, 0.5, -frame.Size.Y.Offset/2) -- Center the frame
+    frame.AnchorPoint = Vector2.new(0.5, 0.5) -- Anchor point for centering
     frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    frame.BackgroundTransparency = 0.2 -- Slightly transparent
     frame.BorderSizePixel = 0
     frame.Parent = screenGui
     
@@ -52,8 +54,9 @@ local function createShopGui()
     -- Feedback TextLabel
     local feedbackLabel = Instance.new("TextLabel")
     feedbackLabel.Name = "FeedbackLabel"
-    feedbackLabel.Size = UDim2.new(0, 200, 0, 40)
-    feedbackLabel.Position = UDim2.new(0.5, -100, 0.05, 0) -- Top center
+    feedbackLabel.Size = UDim2.new(0.6, 0, 0, 40) -- Responsive width
+    feedbackLabel.Position = UDim2.new(0.5, -feedbackLabel.Size.X.Offset/2, 0.05, 0) -- Top center responsive
+    feedbackLabel.AnchorPoint = Vector2.new(0.5, 0.5) -- Anchor point for centering
     feedbackLabel.BackgroundTransparency = 0.5
     feedbackLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     feedbackLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -120,20 +123,21 @@ local function createShopGui()
     end
 
     -- Create buttons for each power-up
-    local buttonHeight = 80
-    local spacing = 10
-    local startY = 90
+    local buttonHeight = 0.25 -- Increased responsive height
+    local spacing = 0.03 -- Adjusted responsive spacing
+    local startY = 0.2 -- Adjusted responsive start Y
     
     for i, powerUp in ipairs(POWER_UPS) do
         -- HoneyDrip Purchase Button
         local honeyDripButton = Instance.new("TextButton")
-        honeyDripButton.Size = UDim2.new(0.45, -5, 0, buttonHeight)
-        honeyDripButton.Position = UDim2.new(0, 10, 0, startY + (i-1) * (buttonHeight + spacing))
+        honeyDripButton.Size = UDim2.new(0.45, 0, buttonHeight, 0) -- Responsive width and height
+        honeyDripButton.Position = UDim2.new(0.05, 0, startY + (i-1) * (buttonHeight + spacing), 0) -- Responsive position
         honeyDripButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
         honeyDripButton.Text = powerUp.Name .. "\n" .. powerUp.Description .. "\nCost: " .. powerUp.Cost .. " HoneyDrips"
         honeyDripButton.TextColor3 = Color3.new(1, 1, 1)
         honeyDripButton.TextScaled = true
         honeyDripButton.Font = Enum.Font.GothamBold
+        honeyDripButton.TextWrapped = true -- Ensure text wraps
         honeyDripButton.Parent = frame
         
         honeyDripButton.MouseButton1Click:Connect(function()
@@ -151,13 +155,14 @@ local function createShopGui()
 
         -- Robux Purchase Button
         local robuxButton = Instance.new("TextButton")
-        robuxButton.Size = UDim2.new(0.45, -5, 0, buttonHeight)
-        robuxButton.Position = UDim2.new(0.55, 0, 0, startY + (i-1) * (buttonHeight + spacing))
+        robuxButton.Size = UDim2.new(0.45, 0, buttonHeight, 0) -- Responsive width and height
+        robuxButton.Position = UDim2.new(0.5, 0, startY + (i-1) * (buttonHeight + spacing), 0) -- Responsive position
         robuxButton.BackgroundColor3 = Color3.fromRGB(100, 40, 100) -- Purple color for Robux
         robuxButton.Text = "Buy with Robux\n" .. powerUp.RobuxCost .. " R$"
         robuxButton.TextColor3 = Color3.new(1, 1, 1)
         robuxButton.TextScaled = true
         robuxButton.Font = Enum.Font.GothamBold
+        robuxButton.TextWrapped = true -- Ensure text wraps
         robuxButton.Parent = frame
 
         robuxButton.MouseButton1Click:Connect(function()

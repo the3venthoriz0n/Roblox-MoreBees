@@ -60,7 +60,7 @@ POWER_UPS[4].Effect = function(character)
     -- Fire the BindableEvent to request bee spawning
     local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
     if spawnBeesRequestEvent then
-        spawnBeesRequestEvent:Fire(20) -- Request to spawn bees
+        spawnBeesRequestEvent:Fire(10, BrickColor.new("Really red")) -- Request to spawn 10 red bees
     else
         warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
     end
