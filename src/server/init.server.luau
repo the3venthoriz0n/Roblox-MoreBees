@@ -106,8 +106,8 @@ local HONEYDRIP_DROP_CHANCE = 50 -- 50% chance for a HoneyDrip to drop when a be
 local HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health HoneyDrip restores
 
 -- Bee Stamina Constants
-local MAX_CHASE_TIME = 10 -- seconds a bee can chase before getting tired
-local TIRED_SPEED_MULTIPLIER = 0.3 -- Multiplier for speed when tired (e.g., 0.5 means half speed)
+local MAX_CHASE_TIME = 5 -- seconds a bee can chase before getting tired
+local TIRED_SPEED_MULTIPLIER = 4 -- Multiplier for speed when tired (e.g., 1.5 means 1.5x slower)
 
 debugPrint("Before createHoneyDrip definition: createHoneyDrip is ", tostring(createHoneyDrip))
 -- Function to create and spawn a HoneyDrip item near the BeeHive
@@ -367,8 +367,8 @@ local function createFlyingCube(customColor)
     -- Aggravation Radius
     local aggravationRadius = 25 -- Bees will only attack if player is within 25 studs
 
-    -- BodyMover Multiplier
-    local BODY_MOVER_MULTIPLIER = 1000 -- Multiply P and D values by this to work with smaller numbers
+    -- BodyMover Multiplier, larger is "slower"
+    local BODY_MOVER_MULTIPLIER = 2500 -- Multiply P and D values by this to work with smaller numbers
 
     -- Find the BeeHive and set spawn position
     local spawnPosition = Vector3.new(0, 25, 0) -- Default spawn if BeeHive not found or no PrimaryPart
@@ -467,44 +467,12 @@ local function createFlyingCube(customColor)
         local shouldAttackPlayer = false
         local distanceToPlayer = math.huge
 
-        -- ANGER LOGIC & STATE UPDATE
+        -- Determine if the bee should be chasing based on player proximity
         if targetPlayer and playerRootPart then
             distanceToPlayer = (primaryPart.Position - playerRootPart.Position).Magnitude
             if distanceToPlayer <= aggravationRadius then
-                angerLevel = math.min(100, angerLevel + 50 * dt)
-            else
-                angerLevel = math.max(0, angerLevel - 1 * dt)
+                shouldAttackPlayer = true
             end
-
-            if angerLevel >= 1 then
-                if not isAngry then 
-                    debugPrint("Bee " .. bee.Name .. " is now ANGRY!")
-                    if swarm then
-                        task.spawn(function()
-                            local newBee = createFlyingCube()
-                            if newBee then
-                                debugPrint("Spawned additional calm bee due to anger!")
-                            end
-                        end)
-                    end
-                end
-                isAngry = true
-            elseif angerLevel <= 0 then
-                if isAngry then debugPrint("Bee " .. bee.Name .. " is no longer angry.") end
-                isAngry = false
-            end
-        else
-            angerLevel = math.max(0, angerLevel - 1 * dt)
-            if angerLevel <= 0 then
-                isAngry = false
-            end
-        end
-
-        -- DECIDE TARGETING BEHAVIOR
-        if isAngry and targetPlayer and playerRootPart then
-            shouldAttackPlayer = true
-        elseif (targetPlayer and playerRootPart) and (not isAngry) and (distanceToPlayer <= aggravationRadius) then
-            shouldAttackPlayer = true
         end
 
         -- STAMINA LOGIC (COUNTING DOWN)
@@ -521,8 +489,8 @@ local function createFlyingCube(customColor)
         end
 
         -- Apply speed multiplier to body movers
-        bodyPosition.P = 10 * BODY_MOVER_MULTIPLIER * currentSpeedMultiplier
-        bodyPosition.D = 1 * BODY_MOVER_MULTIPLIER * currentSpeedMultiplier
+        bodyPosition.P = (10 * BODY_MOVER_MULTIPLIER) * currentSpeedMultiplier
+        bodyPosition.D = (1 * BODY_MOVER_MULTIPLIER) * currentSpeedMultiplier
 
         -- Update stamina display
         staminaText.Text = string.format("Stamina: %.2f / %d", chaseTime, MAX_CHASE_TIME)
@@ -532,7 +500,7 @@ local function createFlyingCube(customColor)
             staminaText.TextColor3 = Color3.new(1, 1, 0) -- Yellow when not tired
         end
 
-        if shouldAttackPlayer then
+        if shouldAttackPlayer and playerRootPart then
             -- Attack mode: move directly toward the player's body
             local baseTarget = playerRootPart.Position
             local attackOffset = Vector3.new(
