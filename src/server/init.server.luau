@@ -209,6 +209,7 @@ end
 -- Define Collision Groups
 local BEEHIVE_COLLISION_GROUP = "BeeHiveGroup"
 local CUBE_COLLISION_GROUP = "FlyingGroup"
+local PLAYER_COLLISION_GROUP = "PlayerGroup"
 
 -- Set up collision rules
 -- Ensure groups exist, then disable collisions between them
@@ -216,9 +217,13 @@ local function setupCollisionGroups()
     -- Register groups if they don't exist
     PhysicsService:RegisterCollisionGroup(BEEHIVE_COLLISION_GROUP)
     PhysicsService:RegisterCollisionGroup(CUBE_COLLISION_GROUP)
+    PhysicsService:RegisterCollisionGroup(PLAYER_COLLISION_GROUP)
 
     -- Disable collisions between BeeHiveGroup and FlyingGroup
     PhysicsService:CollisionGroupSetCollidable(BEEHIVE_COLLISION_GROUP, CUBE_COLLISION_GROUP, false)
+    
+    -- Disable collisions between FlyingGroup (bees) and PlayerGroup (players)
+    PhysicsService:CollisionGroupSetCollidable(CUBE_COLLISION_GROUP, PLAYER_COLLISION_GROUP, false)
 end
 
 -- Call this once at server start
@@ -301,8 +306,8 @@ local function createFlyingCube(customColor)
     for _, part in ipairs(bee:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CollisionGroup = CUBE_COLLISION_GROUP
-            part.CanCollide = false -- Ensure bee parts are not collidable initially
             part.Anchored = false -- Ensure bee parts are not anchored so BodyMovers can affect them
+            debugPrint("Bee part ", part.Name, " initial CanCollide: ", tostring(part.CanCollide))
         end
     end
 
@@ -613,37 +618,60 @@ local function createFlyingCube(customColor)
                             buzSound = nil
                         end
 
+                        -- Mark bee as dead
                         isBeeDead = true
-
-                        -- Bee "dies" after stinging
                         isAlive.Value = 0
-                        if bodyPosition then bodyPosition:Destroy() end
-                        if bodyGyro then bodyGyro:Destroy() end
-                        if connection then connection:Disconnect() end
-
-                        -- Make the bee fall to the ground and become solid
-                        for _, part in ipairs(bee:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.CanCollide = true
-                                part.Material = Enum.Material.SmoothPlastic
-                                part.Transparency = 0.5
-                                part.Anchored = false -- Ensure it can fall
-                            end
-                        end
-
-                        -- Update the bee count display immediately after a bee "dies"
                         updateBeeCount()
 
-                        -- Chance to spawn a new bee when this one "dies" (only if swarm is enabled)
-                        if swarm then
-                            local spawnChance = 50 -- 50% chance
-                            if math.random(1, 100) <= spawnChance then
-                                task.spawn(function()
-                                    createFlyingCube()
-                                    updateBeeCount()
-                                end)
+                        -- Stop all movement and chasing
+                        if connection then 
+                            connection:Disconnect() 
+                            connection = nil
+                        end
+                        if bodyPosition then 
+                            bodyPosition:Destroy() 
+                            bodyPosition = nil
+                        end
+                        if bodyGyro then 
+                            bodyGyro:Destroy() 
+                            bodyGyro = nil
+                        end
+                        if staminaGui then 
+                            staminaGui:Destroy() 
+                            staminaGui = nil
+                        end
+
+                        -- Make bee fall to ground and become transparent
+                        for _, part in ipairs(bee:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                -- Make parts transparent
+                                part.Transparency = 0.8
+                                -- Keep collision enabled initially so it doesn't fall through
+                                part.CanCollide = true
+                                -- Add gravity to make it fall
+                                local bodyForce = Instance.new("BodyForce")
+                                bodyForce.Force = Vector3.new(0, -part:GetMass() * workspace.Gravity, 0)
+                                bodyForce.Parent = part
                             end
                         end
+
+                        -- Anchor the bee to the ground after it falls and then disable collision
+                        task.delay(1, function()
+                            if bee and bee.Parent then
+                                for _, part in ipairs(bee:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        part.Anchored = true
+                                        -- Now we can safely disable collision
+                                        part.CanCollide = false
+                                        -- Remove the body force since we don't need it anymore
+                                        local bodyForce = part:FindFirstChild("BodyForce")
+                                        if bodyForce then
+                                            bodyForce:Destroy()
+                                        end
+                                    end
+                                end
+                            end
+                        end)
 
                         -- Chance to drop a HoneyDrip when the bee dies
                         if math.random(1, 100) <= HONEYDRIP_DROP_CHANCE then
@@ -733,6 +761,13 @@ local function onPlayerAdded(player)
         currentScore = 0
         lastUpdate = tick()
         
+        -- Set player character parts to the PlayerGroup collision group
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CollisionGroup = PLAYER_COLLISION_GROUP
+            end
+        end
+
         -- Update score every second while alive
         local connection
         connection = RunService.Heartbeat:Connect(function()
@@ -848,4 +883,5 @@ local function spawnMultipleBees(count, color)
 end
 
 -- Connect the BindableEvent to the spawning function
+SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
 SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
