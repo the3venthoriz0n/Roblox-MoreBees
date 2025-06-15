@@ -105,6 +105,10 @@ local HONEYDRIP_DROP_CHANCE = 50 -- 50% chance for a HoneyDrip to drop when a be
 
 local HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health HoneyDrip restores
 
+-- Bee Stamina Constants
+local MAX_CHASE_TIME = 10 -- seconds a bee can chase before getting tired
+local TIRED_SPEED_MULTIPLIER = 0.3 -- Multiplier for speed when tired (e.g., 0.5 means half speed)
+
 debugPrint("Before createHoneyDrip definition: createHoneyDrip is ", tostring(createHoneyDrip))
 -- Function to create and spawn a HoneyDrip item near the BeeHive
 local function createHoneyDrip(initialPosition)
@@ -332,6 +336,29 @@ local function createFlyingCube(customColor)
     isAlive.Value = 1 -- 1 for alive, 0 for dead
     isAlive.Parent = bee
 
+    -- Stamina tracking for this bee
+    local chaseTime = MAX_CHASE_TIME -- How long this bee has been actively chasing a player
+
+    -- Create BillboardGui for stamina display
+    local staminaGui = Instance.new("BillboardGui")
+    staminaGui.Name = "StaminaDisplay"
+    staminaGui.Size = UDim2.new(2, 0, 1, 0) -- Size of the GUI (width 2 studs, height 1 stud)
+    staminaGui.StudsOffset = Vector3.new(0, 5, 0) -- Offset above the bee
+    staminaGui.AlwaysOnTop = true
+    staminaGui.Parent = primaryPart -- Parent to the primary part so it moves with the bee
+
+    local staminaText = Instance.new("TextLabel")
+    staminaText.Name = "StaminaText"
+    staminaText.Size = UDim2.new(1, 0, 1, 0)
+    staminaText.BackgroundTransparency = 1
+    staminaText.TextScaled = true
+    staminaText.TextColor3 = Color3.new(1, 1, 0) -- Yellow color for stamina
+    staminaText.TextStrokeColor3 = Color3.new(0, 0, 0)
+    staminaText.TextStrokeTransparency = 0
+    staminaText.Font = Enum.Font.SourceSansBold
+    staminaText.Text = "Stamina: 0.00"
+    staminaText.Parent = staminaGui
+
     -- Aggravation Radius
     local aggravationRadius = 25 -- Bees will only attack if player is within 25 studs
 
@@ -473,6 +500,31 @@ local function createFlyingCube(customColor)
             shouldAttackPlayer = true
         elseif (targetPlayer and playerRootPart) and (not isAngry) and (distanceToPlayer <= aggravationRadius) then
             shouldAttackPlayer = true
+        end
+
+        -- STAMINA LOGIC (COUNTING DOWN)
+        if shouldAttackPlayer then
+            chaseTime = math.max(0, chaseTime - dt) -- Stamina decreases when chasing
+        else
+            chaseTime = math.min(MAX_CHASE_TIME, chaseTime + dt) -- Stamina recovers when not chasing
+        end
+
+        local currentSpeedMultiplier = 1.0
+        if chaseTime <= 0 then -- Bee is tired when stamina is 0 or less
+            currentSpeedMultiplier = TIRED_SPEED_MULTIPLIER
+            debugPrint("Bee " .. bee.Name .. " is tired! Speed multiplier: ", currentSpeedMultiplier)
+        end
+
+        -- Apply speed multiplier to body movers
+        bodyPosition.P = 10 * BODY_MOVER_MULTIPLIER * currentSpeedMultiplier
+        bodyPosition.D = 1 * BODY_MOVER_MULTIPLIER * currentSpeedMultiplier
+
+        -- Update stamina display
+        staminaText.Text = string.format("Stamina: %.2f / %d", chaseTime, MAX_CHASE_TIME)
+        if chaseTime <= 0 then
+            staminaText.TextColor3 = Color3.new(1, 0, 0) -- Red when tired
+        else
+            staminaText.TextColor3 = Color3.new(1, 1, 0) -- Yellow when not tired
         end
 
         if shouldAttackPlayer then
