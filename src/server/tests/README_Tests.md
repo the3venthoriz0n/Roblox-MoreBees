@@ -8,7 +8,7 @@ A basic testing framework for Roblox modules.
 
 ```lua
 -- MyModuleTests.luau
-local TestRunner = require(game.ServerScriptService.Server.TestRunner)
+local TestRunner = require(game.ServerScriptService.Server.tests.TestRunner)
 local MyModule = require(game.ServerScriptService.Server.MyModule)
 
 local function runTests()
@@ -38,7 +38,7 @@ return MyModuleTests
 
 In your main script:
 ```lua
-local MyModuleTests = require(game.ServerScriptService.Server.MyModuleTests)
+local MyModuleTests = require(game.ServerScriptService.Server.tests.MyModuleTests)
 MyModuleTests.runTests()
 ```
 

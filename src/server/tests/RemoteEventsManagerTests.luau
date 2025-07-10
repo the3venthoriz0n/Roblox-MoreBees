@@ -2,7 +2,7 @@
 -- Tests for the RemoteEventsManager module
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TestRunner = require(game.ServerScriptService.Server.TestRunner)
+local TestRunner = require(game.ServerScriptService.Server.tests.TestRunner)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 
 local function runTests()

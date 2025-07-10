@@ -93,4 +93,4 @@ function RemoteEventsManager.connectToEvent(eventName, callback)
     end
 end
 
-return RemoteEventsManager 
+return RemoteEventsManager

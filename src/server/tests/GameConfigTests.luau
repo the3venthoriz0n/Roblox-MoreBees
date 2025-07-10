@@ -2,7 +2,7 @@
 -- Example tests for the GameConfig module
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TestRunner = require(game.ServerScriptService.Server.TestRunner)
+local TestRunner = require(game.ServerScriptService.Server.tests.TestRunner)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 local function runTests()

@@ -21,12 +21,16 @@ PlayerDataManager.initialize()
 -- Create all remote events
 RemoteEventsManager.createRemoteEvents()
 
--- Run unit tests (optional - remove in production)
-local RemoteEventsManagerTests = require(game.ServerScriptService.Server.RemoteEventsManagerTests)
-local GameConfigTests = require(game.ServerScriptService.Server.GameConfigTests)
+-- Run unit tests (controlled by GameConfig.RUN_TESTS)
+if GameConfig.RUN_TESTS then
+    local RemoteEventsManagerTests = require(game.ServerScriptService.Server.tests.RemoteEventsManagerTests)
+    local GameConfigTests = require(game.ServerScriptService.Server.tests.GameConfigTests)
 
-RemoteEventsManagerTests.runTests()
-GameConfigTests.runTests()
+    RemoteEventsManagerTests.runTests()
+    GameConfigTests.runTests()
+else
+    print("🧪 Unit tests disabled (GameConfig.RUN_TESTS = false)")
+end
 
 
 
