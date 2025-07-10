@@ -5,6 +5,9 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Require GameConfig
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+
 -- Wait for MainUI and WelcomeMessage to exist
 local mainUI = playerGui:WaitForChild("MainUI")
 local welcomeMessage = mainUI:WaitForChild("WelcomeMessage")
@@ -49,87 +52,52 @@ task.delay(5, function()
 end)
 
 -- Respawn timer variables
-local respawnTime = 5
 local deaths = 0
-local respawnGui
-local respawnLabel
 local respawnCountdown = 0
 local respawnConnection
 
--- Create respawn timer GUI
-local function createRespawnGui()
-    if respawnGui then respawnGui:Destroy() end
-    respawnGui = Instance.new("ScreenGui")
-    respawnGui.Name = "RespawnGui"
-    respawnGui.ResetOnSpawn = false
-    respawnGui.Parent = player:WaitForChild("PlayerGui")
-
-    respawnLabel = Instance.new("TextLabel")
-    respawnLabel.Size = UDim2.new(0, 300, 0, 80)
-    respawnLabel.Position = UDim2.new(0.5, -150, 0.4, 0)
-    respawnLabel.BackgroundTransparency = 0.3
-    respawnLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    respawnLabel.TextColor3 = Color3.new(1, 1, 1)
-    respawnLabel.TextStrokeTransparency = 0.5
-    respawnLabel.Font = Enum.Font.SourceSansBold
-    respawnLabel.TextScaled = true
-    respawnLabel.Text = ""
-    respawnLabel.Parent = respawnGui
-end
+local mainUI = playerGui:WaitForChild("MainUI")
+local respawnTimerLabel = mainUI:WaitForChild("RespawnTimer")
 
 local function showRespawnTimer()
-    createRespawnGui()
-    if not respawnLabel then return end -- Safety check
-    
-    respawnCountdown = respawnTime
-    respawnLabel.Text = "Respawning in " .. respawnCountdown .. "..."
-    
+    respawnTimerLabel.Visible = true
+    respawnCountdown = GameConfig.RESPAWN_BASE_TIME * (GameConfig.RESPAWN_TIME_MULTIPLIER * deaths)
+    if respawnCountdown < GameConfig.RESPAWN_BASE_TIME then
+        respawnCountdown = GameConfig.RESPAWN_BASE_TIME
+    end
+    respawnTimerLabel.Text = GameConfig.RESPAWN_LABEL_PREFIX .. math.ceil(respawnCountdown) .. "..."
     if respawnConnection then respawnConnection:Disconnect() end
     respawnConnection = game:GetService("RunService").RenderStepped:Connect(function(dt)
-        if not respawnLabel or not respawnLabel.Parent then return end -- Safety check
-        
         if respawnCountdown > 0 then
             respawnCountdown = respawnCountdown - dt
             local display = math.ceil(respawnCountdown)
-            respawnLabel.Text = "Respawning in " .. display .. "..."
+            respawnTimerLabel.Text = GameConfig.RESPAWN_LABEL_PREFIX .. display .. "..."
             if respawnCountdown <= 0 then
-                respawnLabel.Text = "Respawning..."
+                respawnTimerLabel.Text = "Respawning..."
                 if respawnConnection then
                     respawnConnection:Disconnect()
                     respawnConnection = nil
                 end
                 -- Request respawn
-                local requestRespawnEvent = ReplicatedStorage:WaitForChild("RequestRespawnEvent")
+                local requestRespawnEvent = game:GetService("ReplicatedStorage"):WaitForChild("RequestRespawnEvent")
                 if requestRespawnEvent then
                     requestRespawnEvent:FireServer()
-                else
-                    warn("RequestRespawnEvent not found in ReplicatedStorage!")
                 end
                 task.wait(0.5)
-                if respawnGui then 
-                    respawnGui:Destroy()
-                    respawnGui = nil
-                    respawnLabel = nil
-                end
+                respawnTimerLabel.Visible = false
+                respawnTimerLabel.Text = ""
             end
         end
     end)
 end
 
--- Listen for deaths and trigger respawn timer
 player.CharacterAdded:Connect(function(character)
-    -- Remove respawn GUI if it exists (player has respawned)
-    if respawnGui then
-        respawnGui:Destroy()
-        respawnGui = nil
-        respawnLabel = nil
-    end
-    
+    respawnTimerLabel.Visible = false
+    respawnTimerLabel.Text = ""
     local humanoid = character:WaitForChild("Humanoid")
     humanoid.Died:Connect(function()
         deaths = deaths + 1
-        respawnTime = 5 * deaths -- Increase by 5 seconds per death
-        task.spawn(showRespawnTimer) -- Spawn in a new thread to ensure proper initialization
+        showRespawnTimer()
     end)
 end)
 

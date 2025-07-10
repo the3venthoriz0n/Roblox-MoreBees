@@ -3,7 +3,7 @@ local GameConfig = {}
 -- ============================================================================
 -- DEBUG SETTINGS
 -- ============================================================================
-GameConfig.DEBUG = false
+GameConfig.DEBUG = true
 GameConfig.LOG_LEVEL = "debug" -- "debug", "info", "warn", "error"
 GameConfig.DEBUG_HONEY_DRIPS_VALUE = 100
 GameConfig.RUN_TESTS = false -- Set to false to disable unit tests in production
@@ -117,5 +117,12 @@ GameConfig.FEEDBACK_DISPLAY_TIME = 3 -- seconds to show purchase feedback
 -- TIMING SETTINGS
 -- ============================================================================
 GameConfig.SCORE_UPDATE_INTERVAL = 1 -- seconds between score updates
+
+-- ============================================================================
+-- RESPAWN TIMER SETTINGS
+-- ============================================================================
+GameConfig.RESPAWN_BASE_TIME = 5 -- Base respawn time in seconds
+GameConfig.RESPAWN_TIME_MULTIPLIER = 1 -- Multiplier for respawn time per death (e.g., 1 means 5, 10, 15...)
+GameConfig.RESPAWN_LABEL_PREFIX = "Respawning in " -- Prefix for respawn timer label
 
 return GameConfig 

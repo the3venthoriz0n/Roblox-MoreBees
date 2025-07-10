@@ -152,21 +152,6 @@ local function setupMainUIButtons()
     end
 end
 
--- -- Listen for MainUI being added or recreated
--- local playerGui = player:WaitForChild("PlayerGui")
--- local function onMainUIReady()
---     setupMainUIButtons()
--- end
-
--- if playerGui:FindFirstChild("MainUI") then
---     onMainUIReady()
--- end
-
--- playerGui.ChildAdded:Connect(function(child)
---     if child.Name == "MainUI" then
---         onMainUIReady()
---     end
--- end)
 
 local function clearAllPowerUpTimers()
     local playerGui = player:FindFirstChild("PlayerGui")

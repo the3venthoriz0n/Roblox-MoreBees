@@ -42,14 +42,20 @@ function PowerUpEffects.SpeedBoost(character, duration)
     local humanoid = character:FindFirstChild("Humanoid")
     local player = getPlayer(character)
     if humanoid and player then
-        local originalSpeed = humanoid.WalkSpeed
         startOrExtendEffect(player, "Speed Boost", duration,
             function()
-                humanoid.WalkSpeed = originalSpeed * GameConfig.SPEED_BOOST_MULTIPLIER
+                local effect = activeEffects[player]["Speed Boost"]
+                if not effect.originalSpeed then
+                    effect.originalSpeed = humanoid.WalkSpeed
+                end
+                humanoid.WalkSpeed = effect.originalSpeed * GameConfig.SPEED_BOOST_MULTIPLIER
             end,
             function()
+                local effect = activeEffects[player] and activeEffects[player]["Speed Boost"]
                 if humanoid and humanoid.Parent then
-                    humanoid.WalkSpeed = originalSpeed
+                    if effect and effect.originalSpeed then
+                        humanoid.WalkSpeed = effect.originalSpeed
+                    end
                 end
             end
         )
