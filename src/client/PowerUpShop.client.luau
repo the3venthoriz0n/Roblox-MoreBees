@@ -2,7 +2,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
 -- Require the shared configurations with redundancy
@@ -40,7 +39,6 @@ local PowerUpActiveEvent = nil
 local PowerUpEndedEvent = nil
 
 local function loadRemoteEvents()
-    print("[DEBUG] Loading remote events...")
     local success, result = pcall(function()
         return ReplicatedStorage:WaitForChild("PowerUpShopEvent", 10)
     end)
@@ -85,10 +83,6 @@ end
 -- Load remote events immediately
 loadRemoteEvents()
 
--- Client-specific UI constants
-local ACTIVE_EFFECTS_POSITION = UDim2.new(0, 10, 0, 70)
-local ACTIVE_EFFECTS_SIZE = UDim2.new(0, 200, 0, 0)
-
 -- Debug logging function with redundancy
 local function logDebug(...)
     if GameConfig and GameConfig.LOG_LEVEL == "debug" then
@@ -109,7 +103,6 @@ end
 -- Timer management with redundancy
 local activeTimerConnections = {}
 local activeTimerEndTimes = {}
-local timerRetryCount = {}
 
 local function showPowerUpTimer(buttonName, duration)
     if not buttonName or not duration then
@@ -177,7 +170,6 @@ local function showPowerUpTimer(buttonName, duration)
                 if connection then connection:Disconnect() end
                 activeTimerConnections[buttonName] = nil
                 activeTimerEndTimes[buttonName] = nil
-                timerRetryCount[buttonName] = nil
             end
         end)
         activeTimerConnections[buttonName] = connection
@@ -208,7 +200,6 @@ local function hidePowerUpTimer(buttonName)
             activeTimerConnections[buttonName] = nil
         end
         activeTimerEndTimes[buttonName] = nil
-        timerRetryCount[buttonName] = nil
     end)
 end
 
@@ -270,78 +261,53 @@ local function setupEventConnections()
     end
 end
 
--- Button connection management with extensive redundancy
+-- SIMPLIFIED Button connection management
 local buttonConnections = {}
-local buttonRetryCount = {}
-local MAX_RETRY_COUNT = 10
-local RETRY_DELAY = 0.5
 
-local function connectMainUIButton(buttonName, handler)
+local function connectButton(buttonName, handler)
     if not buttonName or not handler then
-        warn("Invalid parameters for connectMainUIButton:", buttonName, handler)
+        warn("Invalid parameters for connectButton:", buttonName, handler)
         return
     end
     
-    buttonRetryCount[buttonName] = buttonRetryCount[buttonName] or 0
+    print("[DEBUG] Attempting to connect button:", buttonName)
     
-    local function tryConnect()
-        safeExecute("connectMainUIButton", function()
-            local playerGui = player:WaitForChild("PlayerGui", 10)
-            if not playerGui then
-                warn("PlayerGui not found for button connection")
-                return false
-            end
-            
-            local mainUI = playerGui:WaitForChild("MainUI", 10)
-            if not mainUI then
-                warn("MainUI not found for button connection")
-                return false
-            end
-            
-            local button = mainUI:FindFirstChild(buttonName)
-            if not button then
-                warn("Button not found:", buttonName)
-                return false
-            end
-            
-            -- Always disconnect previous connection for this button
-            if buttonConnections[button] then
-                buttonConnections[button]:Disconnect()
-                buttonConnections[button] = nil
-            end
-            
-            -- Connect the new handler with error protection
-            local connection = button.MouseButton1Click:Connect(function()
-                safeExecute("buttonClickHandler", handler)
-            end)
-            
-            buttonConnections[button] = connection
-            buttonRetryCount[buttonName] = 0 -- Reset retry count on success
-            logDebug(buttonName .. " button connected successfully!")
-            return true
-        end)
-        return false
+    -- Wait for PlayerGui and MainUI
+    local playerGui = player:WaitForChild("PlayerGui", 10)
+    if not playerGui then
+        warn("PlayerGui not found")
+        return
     end
     
-    -- Initial connection attempt
-    if not tryConnect() then
-        -- Retry mechanism
-        local function retryConnection()
-            if buttonRetryCount[buttonName] >= MAX_RETRY_COUNT then
-                warn("Max retry count reached for button:", buttonName)
-                return
-            end
-            
-            buttonRetryCount[buttonName] = buttonRetryCount[buttonName] + 1
-            logDebug("Retrying connection for", buttonName, "attempt", buttonRetryCount[buttonName])
-            
-            if not tryConnect() then
-                task.delay(RETRY_DELAY, retryConnection)
+    local mainUI = playerGui:WaitForChild("MainUI", 10)
+    if not mainUI then
+        warn("MainUI not found")
+        return
+    end
+    
+    -- Find the button
+    local button = mainUI:FindFirstChild(buttonName)
+    if not button then
+        warn("Button not found:", buttonName)
+        -- List available buttons for debugging
+        print("[DEBUG] Available buttons in MainUI:")
+        for _, child in ipairs(mainUI:GetChildren()) do
+            if child:IsA("GuiObject") then
+                print("  - " .. child.Name)
             end
         end
-        
-        task.delay(RETRY_DELAY, retryConnection)
+        return
     end
+    
+    -- Disconnect previous connection if exists
+    if buttonConnections[button] then
+        buttonConnections[button]:Disconnect()
+    end
+    
+    -- Connect the new handler
+    buttonConnections[button] = button.MouseButton1Click:Connect(handler)
+    print("[DEBUG] Successfully connected button:", buttonName)
+    return true
 end
 
 local function setupMainUIButtons()
@@ -354,46 +320,33 @@ local function setupMainUIButtons()
         return
     end
     
-    safeExecute("setupMainUIButtons", function()
-        -- Debug: List all available buttons in MainUI
-        local playerGui = player:WaitForChild("PlayerGui", 10)
-        if playerGui then
-            local mainUI = playerGui:FindFirstChild("MainUI")
-            if mainUI then
-                print("[DEBUG] Available buttons in MainUI:")
-                for _, child in ipairs(mainUI:GetChildren()) do
-                    if child:IsA("GuiObject") then
-                        print("  - " .. child.Name)
-                    end
-                end
-            else
-                warn("MainUI not found for button listing")
-            end
-        end
+    print("[DEBUG] Setting up shop buttons...")
+    
+    local connectedCount = 0
+    for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
+        local buttonName = powerUp.Name:gsub(" ", "")
+        print("[DEBUG] Looking for button:", buttonName, "for power-up:", powerUp.Name)
         
-        for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
-            local buttonName = powerUp.Name:gsub(" ", "")
-            print("[DEBUG] Looking for button:", buttonName, "for power-up:", powerUp.Name)
-            if buttonName then
-                connectMainUIButton(buttonName, function()
-                    print("[DEBUG] Button clicked:", buttonName)
-                    safeExecute("buttonClickHandler", function()
-                        if powerUp.ProductId and powerUp.EnableRobuxPurchase then
-                            logDebug(buttonName .. " button clicked, prompting Robux purchase.")
-                            local MarketplaceService = game:GetService("MarketplaceService")
-                            MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
-                        elseif powerUp.Cost and shopEvent then
-                            logDebug(buttonName .. " button clicked, purchasing with HoneyDrips.")
-                            print("[DEBUG] Firing PowerUpShopEvent with index:", i)
-                            shopEvent:FireServer(i)
-                        else
-                            logDebug(buttonName .. " button clicked, but no valid purchase method found.")
-                        end
-                    end)
-                end)
+        if connectButton(buttonName, function()
+            print("[DEBUG] Button clicked:", buttonName)
+            
+            if powerUp.ProductId and powerUp.EnableRobuxPurchase then
+                logDebug(buttonName .. " button clicked, prompting Robux purchase.")
+                local MarketplaceService = game:GetService("MarketplaceService")
+                MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
+            elseif powerUp.Cost and shopEvent then
+                logDebug(buttonName .. " button clicked, purchasing with HoneyDrips.")
+                print("[DEBUG] Firing PowerUpShopEvent with index:", i)
+                shopEvent:FireServer(i)
+            else
+                logDebug(buttonName .. " button clicked, but no valid purchase method found.")
             end
+        end) then
+            connectedCount = connectedCount + 1
         end
-    end)
+    end
+    
+    print("[SUCCESS] Connected " .. connectedCount .. " out of " .. #ShopConfig.POWER_UPS_DATA .. " shop buttons successfully!")
 end
 
 local function clearAllPowerUpTimers()
@@ -421,9 +374,6 @@ local function clearAllPowerUpTimers()
         end
         for k, _ in pairs(activeTimerEndTimes) do
             activeTimerEndTimes[k] = nil
-        end
-        for k, _ in pairs(timerRetryCount) do
-            timerRetryCount[k] = nil
         end
     end)
 end
@@ -486,51 +436,10 @@ local function setupGlobalTooltip()
     end)
 end
 
--- Recovery and monitoring system
-local function monitorAndRecover()
-    -- Monitor for missing buttons and reconnect
-    task.spawn(function()
-        while true do
-            task.wait(5) -- Check every 5 seconds
-            
-            if not ShopConfig then
-                loadConfigs() -- Try to reload configs
-            elseif not ShopConfig.POWER_UPS_DATA then
-                loadConfigs() -- Try to reload configs
-            else
-                local playerGui = player:FindFirstChild("PlayerGui")
-                if playerGui then
-                    local mainUI = playerGui:FindFirstChild("MainUI")
-                    if mainUI then
-                        -- Check if any buttons are missing connections
-                        for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
-                            local buttonName = powerUp.Name:gsub(" ", "")
-                            if buttonName then
-                                local button = mainUI:FindFirstChild(buttonName)
-                                if button and not buttonConnections[button] then
-                                    logDebug("Button missing connection, reconnecting:", buttonName)
-                                    connectMainUIButton(buttonName, function()
-                                        safeExecute("recoveredButtonClickHandler", function()
-                                            if powerUp.ProductId and powerUp.EnableRobuxPurchase then
-                                                local MarketplaceService = game:GetService("MarketplaceService")
-                                                MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
-                                            elseif powerUp.Cost and shopEvent then
-                                                shopEvent:FireServer(i)
-                                            end
-                                        end)
-                                    end)
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Initialize everything with redundancy
+-- Simple initialization function
 local function initializeShop()
+    print("[DEBUG] Initializing shop...")
+    
     -- Load configs if not loaded
     if not GameConfig then
         loadConfigs()
@@ -553,10 +462,7 @@ local function initializeShop()
     -- Setup tooltips
     setupGlobalTooltip()
     
-    -- Start monitoring
-    monitorAndRecover()
-    
-    logDebug("Shop initialization completed")
+    print("[DEBUG] Shop initialization completed")
 end
 
 -- Character management with redundancy
@@ -590,7 +496,7 @@ end
 -- Initialize shop
 initializeShop()
 
--- Periodic re-initialization for maximum redundancy
+-- Simple periodic re-initialization
 task.spawn(function()
     while true do
         task.wait(30) -- Re-initialize every 30 seconds

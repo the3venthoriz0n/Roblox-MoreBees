@@ -111,7 +111,7 @@ GameConfig.HONEYDRIP_PICKUP_DELAY = 0.1 -- delay before destroying HoneyDrip aft
 -- ============================================================================
 -- UI SETTINGS
 -- ============================================================================
-GameConfig.FEEDBACK_DISPLAY_TIME = 3 -- seconds to show purchase feedback
+GameConfig.FEEDBACK_DISPLAY_TIME = 1 -- seconds to show purchase feedback
 
 -- ============================================================================
 -- TIMING SETTINGS
