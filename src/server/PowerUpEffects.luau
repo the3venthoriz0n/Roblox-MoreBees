@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Require GameConfig for constants
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
+local PowerUpEndedEvent = RemoteEventsManager.getRemoteEvent("PowerUpEnded")
 
 local PowerUpEffects = {}
 
@@ -11,7 +12,7 @@ local PowerUpEffects = {}
 local function firePowerUpEndedEvent(character, powerUpName)
     local player = Players:GetPlayerFromCharacter(character)
     if player then
-        RemoteEventsManager.fireToClient("PowerUpEnded", player, powerUpName)
+        PowerUpEndedEvent:FireClient(player, powerUpName)
     end
 end
 

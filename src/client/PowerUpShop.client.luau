@@ -45,7 +45,12 @@ activeEffectsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 -- Table to keep track of active power-up labels
 local activePowerUpLabels = {}
 
-
+-- Debug logging function
+local function logDebug(...)
+    if GameConfig and GameConfig.LOG_LEVEL == "debug" then
+        print("[DEBUG]", ...)
+    end
+end
 
 -- Listen for PowerUpActiveEvent from server
 PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)
@@ -126,21 +131,29 @@ end)
 -- Keep track of whether the button is already connected
 local speedBoostButtonConnected = false
 
+
+
 local function connectSpeedBoostButton()
     if speedBoostButtonConnected then
         return -- Already connected, don't connect again
     end
     
     local playerGui = player:WaitForChild("PlayerGui")
-    local mainUI = playerGui:WaitForChild("MainUI")
-    local speedBoostButton = mainUI:WaitForChild("SpeedBoost")
-    
-    if speedBoostButton then
-        speedBoostButton.MouseButton1Click:Connect(function()
-            shopEvent:FireServer(1)
-        end)
-        speedBoostButtonConnected = true
+    local function tryConnect()
+        local mainUI = playerGui:FindFirstChild("MainUI")
+        local speedBoostButton = mainUI and mainUI:FindFirstChild("SpeedBoost")
+        if speedBoostButton and not speedBoostButtonConnected then
+            speedBoostButton.MouseButton1Click:Connect(function()
+                logDebug("Speed boost button clicked, firing shopEvent to server.")
+                shopEvent:FireServer(1)
+            end)
+            speedBoostButtonConnected = true
+        else
+            -- Retry after a short delay if not found
+            task.delay(0.2, tryConnect)
+        end
     end
+    tryConnect()
 end
 
 local function clearActiveEffectsDisplay()

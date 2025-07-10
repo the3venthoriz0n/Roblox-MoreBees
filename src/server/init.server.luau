@@ -248,7 +248,7 @@ end
 
 -- Function to create and spawn a flying bee that follows the closest player
 local function createFlyingCube(customColor)
-    logDebug("Attempting to create flying bee...")
+    -- logDebug("Attempting to create flying bee...")
     
     -- Get the bee model from ReplicatedStorage, as per your model's new location
     local beeModel = ReplicatedStorage:FindFirstChild("Bee")
@@ -256,7 +256,7 @@ local function createFlyingCube(customColor)
         warn("Bee model not found in ReplicatedStorage! Please add a bee model named 'Bee' to ReplicatedStorage.")
         return nil
     end
-    logDebug("Bee model found in ReplicatedStorage")
+    -- logDebug("Bee model found in ReplicatedStorage")
     
     -- Clone the bee model
     local bee = beeModel:Clone()

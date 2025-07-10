@@ -11,7 +11,7 @@ local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEvents
 
 local function logDebug(...)
     if GameConfig.LOG_LEVEL == "debug" then
-        print("[DEBUG]", ...)
+        print("[DEBUG][PowerUpShop.server]", ...)
     end
 end
 
@@ -26,7 +26,6 @@ end
 local shopEvent = RemoteEventsManager.getRemoteEvent("PowerUpShop")
 local purchaseFeedbackEvent = RemoteEventsManager.getRemoteEvent("PurchaseFeedback")
 local PowerUpActiveEvent = RemoteEventsManager.getRemoteEvent("PowerUpActive")
-local PowerUpEndedEvent = RemoteEventsManager.getRemoteEvent("PowerUpEnded")
 
 -- Add server-side effects to the copied power-up data
 POWER_UPS[1].Effect = function(character)
@@ -46,13 +45,19 @@ POWER_UPS[4].Effect = function(character)
 end
 
 -- Handle shop purchases (HoneyDrips)
-RemoteEventsManager.connectToEvent("PowerUpShop", function(player, powerUpIndex)
+shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
     logDebug("shopEvent.OnServerEvent called for player:", player and player.Name or tostring(player), "powerUpIndex:", powerUpIndex)
     local character = player.Character
-    if not character then return end
+    if not character then
+        logDebug("No character for player", player and player.Name or tostring(player))
+        return
+    end
 
     local powerUp = POWER_UPS[powerUpIndex]
-    if not powerUp then return end
+    if not powerUp then
+        logDebug("Invalid powerUpIndex:", powerUpIndex)
+        return
+    end
 
     local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
     logDebug("Player", player.Name, "has", currentHoneyDrips, "HoneyDrips. PowerUp cost:", powerUp.Cost)
@@ -68,19 +73,21 @@ RemoteEventsManager.connectToEvent("PowerUpShop", function(player, powerUpIndex)
         print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
 
         -- Send success feedback to client
-        RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Purchased " .. powerUp.Name .. "!")
+        logDebug("Firing PurchaseFeedback to client for success")
+        purchaseFeedbackEvent:FireClient(player, "Purchased " .. powerUp.Name .. "!")
 
         -- Signal power-up active to client
         if powerUp.Duration > 0 then
             logDebug("Firing PowerUpActiveEvent for", player.Name, powerUp.Name, powerUp.Duration)
-            RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
+            PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
         end
     else
         -- Notify player (server log)
         print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
         
         -- Send insufficient funds feedback to client
-        RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Not enough HoneyDrips!")
+        logDebug("Firing PurchaseFeedback to client for insufficient funds")
+        purchaseFeedbackEvent:FireClient(player, "Not enough HoneyDrips!")
     end
 end)
 
@@ -105,7 +112,7 @@ local function processRobuxReceipt(receiptInfo)
             
             -- Signal power-up active to client
             if powerUp.Duration > 0 then
-                RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
+                PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
             end
 
             return Enum.ProductPurchaseDecision.PurchaseGranted
@@ -121,9 +128,9 @@ MarketplaceService.ProcessReceipt = processRobuxReceipt
 local toggleShopEvent = RemoteEventsManager.getRemoteEvent("ToggleShop")
 
 -- Handle shop visibility toggle
-RemoteEventsManager.connectToEvent("ToggleShop", function(player)
+toggleShopEvent.OnServerEvent:Connect(function(player)
     print("ToggleShopEvent received on server for player: ", player.Name)
     -- Instead of trying to find the GUI on the server, fire the event back to the client
-    RemoteEventsManager.fireToClient("ToggleShop", player)
+    toggleShopEvent:FireClient(player)
     print("Server fired ToggleShopEvent back to client for player: ", player.Name)
 end)

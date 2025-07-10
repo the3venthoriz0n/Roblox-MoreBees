@@ -5,56 +5,62 @@ local RemoteEventsManager = {}
 -- Store all remote events for easy access
 local remoteEvents = {}
 
+local function logDebug(...)
+    print("[DEBUG][RemoteEventsManager]", ...)
+end
+
 -- Create all remote events
 function RemoteEventsManager.createRemoteEvents()
+    -- Helper to create or get existing event
+    local function createOrGetEvent(eventName)
+        local existing = ReplicatedStorage:FindFirstChild(eventName)
+        if existing then
+            logDebug("Event already exists:", eventName)
+            return existing
+        else
+            local event = Instance.new("RemoteEvent")
+            event.Name = eventName
+            event.Parent = ReplicatedStorage
+            logDebug("Created event:", eventName)
+            return event
+        end
+    end
+
     -- Bee spawning event
-    local spawnCubeEvent = Instance.new("RemoteEvent")
-    spawnCubeEvent.Name = "SpawnCube"
-    spawnCubeEvent.Parent = ReplicatedStorage
-    remoteEvents.SpawnCube = spawnCubeEvent
-
+    remoteEvents.SpawnCube = createOrGetEvent("SpawnCube")
     -- Player respawn request event
-    local requestRespawnEvent = Instance.new("RemoteEvent")
-    requestRespawnEvent.Name = "RequestRespawnEvent"
-    requestRespawnEvent.Parent = ReplicatedStorage
-    remoteEvents.RequestRespawn = requestRespawnEvent
-
+    remoteEvents.RequestRespawn = createOrGetEvent("RequestRespawnEvent")
     -- Power-up shop interaction event
-    local shopEvent = Instance.new("RemoteEvent")
-    shopEvent.Name = "PowerUpShopEvent"
-    shopEvent.Parent = ReplicatedStorage
-    remoteEvents.PowerUpShop = shopEvent
-
+    remoteEvents.PowerUpShop = createOrGetEvent("PowerUpShopEvent")
     -- Purchase feedback event
-    local purchaseFeedbackEvent = Instance.new("RemoteEvent")
-    purchaseFeedbackEvent.Name = "PurchaseFeedbackEvent"
-    purchaseFeedbackEvent.Parent = ReplicatedStorage
-    remoteEvents.PurchaseFeedback = purchaseFeedbackEvent
-
+    remoteEvents.PurchaseFeedback = createOrGetEvent("PurchaseFeedbackEvent")
     -- Power-up active event
-    local PowerUpActiveEvent = Instance.new("RemoteEvent")
-    PowerUpActiveEvent.Name = "PowerUpActiveEvent"
-    PowerUpActiveEvent.Parent = ReplicatedStorage
-    remoteEvents.PowerUpActive = PowerUpActiveEvent
-
+    remoteEvents.PowerUpActive = createOrGetEvent("PowerUpActiveEvent")
     -- Power-up ended event
-    local PowerUpEndedEvent = Instance.new("RemoteEvent")
-    PowerUpEndedEvent.Name = "PowerUpEndedEvent"
-    PowerUpEndedEvent.Parent = ReplicatedStorage
-    remoteEvents.PowerUpEnded = PowerUpEndedEvent
-
+    remoteEvents.PowerUpEnded = createOrGetEvent("PowerUpEndedEvent")
     -- Shop visibility toggle event
-    local toggleShopEvent = Instance.new("RemoteEvent")
-    toggleShopEvent.Name = "ToggleShopEvent"
-    toggleShopEvent.Parent = ReplicatedStorage
-    remoteEvents.ToggleShop = toggleShopEvent
-
-    print("RemoteEventsManager: All remote events created successfully")
+    remoteEvents.ToggleShop = createOrGetEvent("ToggleShopEvent")
+    -- Bindable event for bee spawning
+    local bindable = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
+    if not bindable then
+        bindable = Instance.new("BindableEvent")
+        bindable.Name = "SpawnBeesRequestEvent"
+        bindable.Parent = ReplicatedStorage
+        logDebug("Created bindable event: SpawnBeesRequestEvent")
+    else
+        logDebug("Bindable event already exists: SpawnBeesRequestEvent")
+    end
 end
 
 -- Get a specific remote event by name
-function RemoteEventsManager.getRemoteEvent(eventName)
-    return remoteEvents[eventName]
+function RemoteEventsManager.getRemoteEvent(key)
+    local event = remoteEvents[key]
+    if event then
+        logDebug("getRemoteEvent:", key, "->", event.Name)
+    else
+        logDebug("getRemoteEvent: No event found for key:", key)
+    end
+    return event
 end
 
 -- Get all remote events
