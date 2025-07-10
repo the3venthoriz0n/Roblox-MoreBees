@@ -7,7 +7,7 @@ local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
-local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
+local RemoteEventsManager = require(ReplicatedStorage.Shared.RemoteEventsManager)
 
 local function logDebug(...)
     if GameConfig.LOG_LEVEL == "debug" then

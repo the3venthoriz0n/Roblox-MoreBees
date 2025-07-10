@@ -17,31 +17,32 @@ scoresFolder.Parent = ReplicatedStorage
 -- ============================================================================
 
 -- Initialize player stats when they join
-function PlayerDataManager.initializePlayerStats(player)
-    -- Create leaderstats folder if it doesn't exist
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if not leaderstats then
-        leaderstats = Instance.new("Folder")
-        leaderstats.Name = "leaderstats"
-        leaderstats.Parent = player
-    end
+-- Inline their logic into onPlayerAdded if only used there
+-- function PlayerDataManager.initializePlayerStats(player)
+--     -- Create leaderstats folder if it doesn't exist
+--     local leaderstats = player:FindFirstChild("leaderstats")
+--     if not leaderstats then
+--         leaderstats = Instance.new("Folder")
+--         leaderstats.Name = "leaderstats"
+--         leaderstats.Parent = player
+--     end
     
-    -- Create HoneyDrips stat if it doesn't exist
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-    if not honeyDrips then
-        honeyDrips = Instance.new("IntValue")
-        honeyDrips.Name = "HoneyDrips"
-        honeyDrips.Value = 0
-        honeyDrips.Parent = leaderstats
-    end
-    return leaderstats
-end
+--     -- Create HoneyDrips stat if it doesn't exist
+--     local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
+--     if not honeyDrips then
+--         honeyDrips = Instance.new("IntValue")
+--         honeyDrips.Name = "HoneyDrips"
+--         honeyDrips.Value = 0
+--         honeyDrips.Parent = leaderstats
+--     end
+--     return leaderstats
+-- end
 
-function PlayerDataManager.setDebugHoneyDrips(player)
-    local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats")
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips") or leaderstats:WaitForChild("HoneyDrips")
-    honeyDrips.Value = GameConfig.DEBUG_HONEY_DRIPS_VALUE
-end
+-- function PlayerDataManager.setDebugHoneyDrips(player)
+--     local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats")
+--     local honeyDrips = leaderstats:FindFirstChild("HoneyDrips") or leaderstats:WaitForChild("HoneyDrips")
+--     honeyDrips.Value = GameConfig.DEBUG_HONEY_DRIPS_VALUE
+-- end
 
 -- ============================================================================
 -- HONEYDRIPS MANAGEMENT
@@ -157,7 +158,10 @@ function PlayerDataManager.onPlayerAdded(player, DEFAULT_SPAWN_POSITION)
         currentScore = 0
         lastUpdate = tick()
         if GameConfig.DEBUG then
-            PlayerDataManager.setDebugHoneyDrips(player)
+            -- Inline setDebugHoneyDrips logic
+            local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats")
+            local honeyDrips = leaderstats:FindFirstChild("HoneyDrips") or leaderstats:WaitForChild("HoneyDrips")
+            honeyDrips.Value = GameConfig.DEBUG_HONEY_DRIPS_VALUE
         end
         
         -- Set player character parts to the PlayerGroup collision group
@@ -190,10 +194,7 @@ function PlayerDataManager.onPlayerAdded(player, DEFAULT_SPAWN_POSITION)
             end
             -- Reset HoneyDrips
             PlayerDataManager.updatePlayerHoneyDrips(player, 0)
-            -- Remove all active effects
-            humanoid.WalkSpeed = GameConfig.DEFAULT_WALK_SPEED -- default WalkSpeed
-            humanoid.MaxHealth = GameConfig.DEFAULT_MAX_HEALTH -- default MaxHealth
-            player:SetAttribute("BeeShield", false)
+            -- Note: Active effects are now handled by PowerUpEffects.clearAllEffects()
         end)
     end)
     
@@ -210,13 +211,8 @@ end
 
 -- Connect player joining events
 function PlayerDataManager.initialize()
-    -- Connect player joining
-    Players.PlayerAdded:Connect(function(player)
-        PlayerDataManager.initializePlayerStats(player)
-        if GameConfig.DEBUG then
-            PlayerDataManager.setDebugHoneyDrips(player)
-        end
-    end)
+    -- Note: PlayerAdded connection is now handled in main server script
+    -- This function is kept for compatibility but does nothing
 end
 
 return PlayerDataManager 

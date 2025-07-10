@@ -6,7 +6,8 @@ local PhysicsService = game:GetService("PhysicsService")
 local ServerStorage = game:GetService("ServerStorage")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
-local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
+local RemoteEventsManager = require(ReplicatedStorage.Shared.RemoteEventsManager)
+local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
 local SoundsFolder = ServerStorage:FindFirstChild("Sounds")
 local buzSounds = {}
 local stingSounds = {}
@@ -750,8 +751,22 @@ end
 spawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
 
 -- Handle client respawn requests
-RemoteEventsManager.connectToEvent("RequestRespawn", function(player)
+RemoteEventsManager.connectToEvent("RequestRespawnEvent", function(player)
     if player and player:IsA("Player") then
+        -- Clear any active effects before respawning
+        local character = player.Character
+        if character then
+            -- Reset any character-specific attributes or states
+            player:SetAttribute("BeeShield", false)
+            
+            -- Clear any force fields
+            local forceField = character:FindFirstChildOfClass("ForceField")
+            if forceField then
+                forceField:Destroy()
+            end
+        end
+        
+        -- Load new character
         player:LoadCharacter()
     end
 end)

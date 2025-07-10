@@ -223,6 +223,9 @@ player.CharacterAdded:Connect(function(character)
     setupGlobalTooltip()
 end)
 
+-- Remove the buttonsSetup logic and only set up tooltips for existing character on join
 if player.Character then
+    task.wait(0.1)
+    setupMainUIButtons()
     setupGlobalTooltip()
 end 
