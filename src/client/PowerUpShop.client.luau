@@ -124,20 +124,56 @@ local function connectMainUIButton(buttonName, handler)
             -- Connect the new handler
             buttonConnections[button] = button.MouseButton1Click:Connect(handler)
             logDebug(buttonName .. " button connected! (instance: " .. tostring(button) .. ")")
+            return true -- Success
         else
             logDebug(buttonName .. " button not found, retrying...")
-            task.delay(0.2, tryConnect)
+            return false -- Not found
         end
     end
-    tryConnect()
+    
+    -- Try to connect immediately
+    if not tryConnect() then
+        -- If not found, retry with exponential backoff
+        local retryCount = 0
+        local maxRetries = 10
+        local function retry()
+            retryCount = retryCount + 1
+            if retryCount > maxRetries then
+                warn("Failed to connect button " .. buttonName .. " after " .. maxRetries .. " attempts")
+                return
+            end
+            if not tryConnect() then
+                task.delay(0.5 * retryCount, retry) -- Exponential backoff
+            end
+        end
+        task.delay(0.2, retry)
+    end
 end
 
 local function setupMainUIButtons()
     local playerGui = player:WaitForChild("PlayerGui")
     local mainUI = playerGui:WaitForChild("MainUI") -- Use WaitForChild for robustness
+    
+    -- Ensure we have valid ShopConfig data
+    if not ShopConfig or not ShopConfig.POWER_UPS_DATA then
+        warn("ShopConfig or POWER_UPS_DATA not found!")
+        return
+    end
+    
     for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
+        if not powerUp.Name then
+            warn("PowerUp at index " .. i .. " missing Name property")
+            goto continue
+        end
+        
         local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
         connectMainUIButton(buttonName, function()
+            -- Validate powerUp data before processing
+            if not powerUp then
+                warn("Invalid powerUp data for button: " .. buttonName)
+                return
+            end
+            
             if powerUp.ProductId and powerUp.EnableRobuxPurchase then
                 logDebug(buttonName .. " button clicked, prompting Robux purchase.")
                 local MarketplaceService = game:GetService("MarketplaceService")
@@ -147,8 +183,26 @@ local function setupMainUIButtons()
                 shopEvent:FireServer(i)
             else
                 logDebug(buttonName .. " button clicked, but no valid purchase method found in ShopConfig.")
+                -- Provide user feedback for invalid configuration
+                local feedbackMessage = "This power-up is not available for purchase."
+                -- Try to show feedback if possible
+                local shopGui = player.PlayerGui:FindFirstChild("PowerUpShopGui")
+                if shopGui then
+                    local feedbackLabel = shopGui:FindFirstChild("FeedbackLabel")
+                    if feedbackLabel then
+                        feedbackLabel.Text = feedbackMessage
+                        feedbackLabel.Visible = true
+                        task.delay(GameConfig.FEEDBACK_DISPLAY_TIME, function()
+                            if feedbackLabel then
+                                feedbackLabel.Visible = false
+                            end
+                        end)
+                    end
+                end
             end
         end)
+        
+        ::continue::
     end
 end
 

@@ -151,20 +151,20 @@ function PowerUpEffects.clearAllEffects(player)
     
     -- Clear all effects for this player
     for effectName, effect in pairs(activeEffects[player]) do
-        if effect._timerRunning then
+        if effect and effect._timerRunning then
             -- Stop the timer
             effect._timerRunning = false
         end
         
         -- Reset character properties based on effect type
         local character = player.Character
-        if character then
+        if character and character.Parent then
             local humanoid = character:FindFirstChild("Humanoid")
             
-            if effectName == "Speed Boost" and effect.originalSpeed and humanoid then
+            if effectName == "Speed Boost" and effect and effect.originalSpeed and humanoid then
                 humanoid.WalkSpeed = effect.originalSpeed
                 print("[DEBUG] Reset WalkSpeed to original for:", player.Name)
-            elseif effectName == "Health Boost" and effect.originalMaxHealth and humanoid then
+            elseif effectName == "Health Boost" and effect and effect.originalMaxHealth and humanoid then
                 humanoid.MaxHealth = effect.originalMaxHealth
                 humanoid.Health = math.min(humanoid.Health, effect.originalMaxHealth)
                 print("[DEBUG] Reset MaxHealth to original for:", player.Name)
@@ -178,9 +178,14 @@ function PowerUpEffects.clearAllEffects(player)
             end
         end
         
-        -- Notify client that effect ended
-        if character then
-            RemoteEventsManager.firePowerUpEnded(character, effectName)
+        -- Notify client that effect ended (only if character still exists)
+        if character and character.Parent then
+            local success, err = pcall(function()
+                RemoteEventsManager.firePowerUpEnded(character, effectName)
+            end)
+            if not success then
+                warn("[DEBUG] Failed to notify client about effect end:", err)
+            end
         end
     end
     
