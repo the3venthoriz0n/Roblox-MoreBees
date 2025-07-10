@@ -18,15 +18,7 @@ local function loadModules()
         ShopConfig = result
     else
         warn("Failed to load ShopConfig:", result)
-        -- Fallback config
-        ShopConfig = {
-            POWER_UPS_DATA = {
-                {Name = "Speed Boost", Cost = 2, Duration = 20, EnableRobuxPurchase = true},
-                {Name = "Health Boost", Cost = 4, Duration = 20, EnableRobuxPurchase = true},
-                {Name = "Bee Shield", Cost = 5, Duration = 30, EnableRobuxPurchase = true},
-                {Name = "More Bees", Cost = 10, Duration = 0, EnableRobuxPurchase = true}
-            }
-        }
+        ShopConfig = nil
     end
     
     success, result = pcall(function()
@@ -36,14 +28,7 @@ local function loadModules()
         PowerUpEffects = result
     else
         warn("Failed to load PowerUpEffects:", result)
-        -- Fallback effects
-        PowerUpEffects = {
-            SpeedBoost = function(character) warn("SpeedBoost effect not available") end,
-            HealthBoost = function(character) warn("HealthBoost effect not available") end,
-            BeeShield = function(character) warn("BeeShield effect not available") end,
-            MoreBees = function(character) warn("MoreBees effect not available") end,
-            HoneyDrip = function(character) warn("HoneyDrip effect not available") end
-        }
+        PowerUpEffects = nil
     end
     
     success, result = pcall(function()
@@ -53,11 +38,7 @@ local function loadModules()
         GameConfig = result
     else
         warn("Failed to load GameConfig:", result)
-        -- Fallback config
-        GameConfig = {
-            LOG_LEVEL = "debug",
-            ENABLE_ROBUX_PURCHASES = true
-        }
+        GameConfig = nil
     end
     
     success, result = pcall(function()
@@ -67,11 +48,7 @@ local function loadModules()
         PlayerDataManager = result
     else
         warn("Failed to load PlayerDataManager:", result)
-        -- Fallback manager
-        PlayerDataManager = {
-            getPlayerHoneyDrips = function(player) return 0 end,
-            updatePlayerHoneyDrips = function(player, amount) warn("PlayerDataManager not available") end
-        }
+        PlayerDataManager = nil
     end
     
     success, result = pcall(function()
@@ -81,11 +58,7 @@ local function loadModules()
         RemoteEventsManager = result
     else
         warn("Failed to load RemoteEventsManager:", result)
-        -- Fallback manager
-        RemoteEventsManager = {
-            connectToEvent = function(eventName, handler) warn("RemoteEventsManager not available") end,
-            fireToClient = function(eventName, player, ...) warn("RemoteEventsManager not available") end
-        }
+        RemoteEventsManager = nil
     end
 end
 
@@ -113,8 +86,12 @@ end
 local POWER_UPS = {}
 
 local function initializePowerUps()
-    if not ShopConfig or not ShopConfig.POWER_UPS_DATA then
+    if not ShopConfig then
         warn("ShopConfig not available for power-up initialization")
+        return
+    end
+    if not ShopConfig.POWER_UPS_DATA then
+        warn("ShopConfig.POWER_UPS_DATA not available for power-up initialization")
         return
     end
     
@@ -124,32 +101,32 @@ local function initializePowerUps()
         end
 
         -- Add server-side effects to the copied power-up data
-        if POWER_UPS[1] and PowerUpEffects.SpeedBoost then
+        if POWER_UPS[1] and PowerUpEffects and PowerUpEffects.SpeedBoost then
             POWER_UPS[1].Effect = function(character)
                 safeExecute("SpeedBoost effect", PowerUpEffects.SpeedBoost, character, POWER_UPS[1].Duration)
             end
         end
 
-        if POWER_UPS[2] and PowerUpEffects.HealthBoost then
+        if POWER_UPS[2] and PowerUpEffects and PowerUpEffects.HealthBoost then
             POWER_UPS[2].Effect = function(character)
                 safeExecute("HealthBoost effect", PowerUpEffects.HealthBoost, character, POWER_UPS[2].Duration)
             end
         end
 
-        if POWER_UPS[3] and PowerUpEffects.BeeShield then
+        if POWER_UPS[3] and PowerUpEffects and PowerUpEffects.BeeShield then
             POWER_UPS[3].Effect = function(character)
                 safeExecute("BeeShield effect", PowerUpEffects.BeeShield, character, POWER_UPS[3].Duration)
             end
         end
 
-        if POWER_UPS[4] and PowerUpEffects.MoreBees then
+        if POWER_UPS[4] and PowerUpEffects and PowerUpEffects.MoreBees then
             POWER_UPS[4].Effect = function(character)
                 safeExecute("MoreBees effect", PowerUpEffects.MoreBees, character, POWER_UPS[4].Duration)
             end
         end
 
         -- Add Honey Drip effect if present
-        if POWER_UPS[5] and PowerUpEffects.HoneyDrip then
+        if POWER_UPS[5] and PowerUpEffects and PowerUpEffects.HoneyDrip then
             POWER_UPS[5].Effect = function(character)
                 safeExecute("HoneyDrip effect", PowerUpEffects.HoneyDrip, character, POWER_UPS[5].Duration)
             end
@@ -190,14 +167,12 @@ local function handleShopPurchase(player, powerUpIndex)
         -- If Robux purchase is enabled for this item, instruct client to use Robux dialog
         if powerUp.EnableRobuxPurchase then
             logDebug("Robux purchase enabled for", powerUp.Name, "- instructing client to use Robux dialog.")
-            if RemoteEventsManager and RemoteEventsManager.fireToClient then
-                RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Please use Robux to purchase this power-up.")
-            end
+            RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Please use Robux to purchase this power-up.")
             return
         end
 
         -- Otherwise, use HoneyDrips cost
-        if not PlayerDataManager or not PlayerDataManager.getPlayerHoneyDrips then
+        if not PlayerDataManager then
             warn("PlayerDataManager not available for HoneyDrips check")
             return
         end
@@ -207,9 +182,7 @@ local function handleShopPurchase(player, powerUpIndex)
         
         if currentHoneyDrips >= powerUp.Cost then
             -- Deduct HoneyDrips
-            if PlayerDataManager.updatePlayerHoneyDrips then
-                PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips - powerUp.Cost)
-            end
+            PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips - powerUp.Cost)
             
             -- Apply power-up effect
             logDebug("Applying effect for powerUp:", powerUp.Name)
@@ -222,16 +195,12 @@ local function handleShopPurchase(player, powerUpIndex)
             
             -- Send success feedback to client
             logDebug("Firing PurchaseFeedback to client for success")
-            if RemoteEventsManager and RemoteEventsManager.fireToClient then
-                RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Purchased " .. powerUp.Name .. "!")
-            end
+            RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Purchased " .. powerUp.Name .. "!")
             
             -- Signal power-up active to client
             if powerUp.Duration and powerUp.Duration > 0 then
                 logDebug("Firing PowerUpActiveEvent for", player.Name, powerUp.Name, powerUp.Duration)
-                if RemoteEventsManager and RemoteEventsManager.fireToClient then
-                    RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
-                end
+                RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
             end
         else
             -- Notify player (server log)
@@ -239,18 +208,17 @@ local function handleShopPurchase(player, powerUpIndex)
             
             -- Send insufficient funds feedback to client
             logDebug("Firing PurchaseFeedback to client for insufficient funds")
-            if RemoteEventsManager and RemoteEventsManager.fireToClient then
-                RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Not enough HoneyDrips!")
-            end
+            RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Not enough HoneyDrips!")
         end
     end)
 end
 
 -- Connect to remote event with redundancy
-if RemoteEventsManager and RemoteEventsManager.connectToEvent then
-    RemoteEventsManager.connectToEvent("PowerUpShopEvent", handleShopPurchase)
+local connection = RemoteEventsManager.connectToEvent("PowerUpShopEvent", handleShopPurchase)
+if connection then
+    print("[DEBUG] Successfully connected to PowerUpShopEvent")
 else
-    warn("RemoteEventsManager not available for PowerUpShopEvent connection")
+    warn("Failed to connect to PowerUpShopEvent")
 end
 
 -- Handle Robux purchases with redundancy
@@ -284,9 +252,7 @@ local function processRobuxReceipt(receiptInfo)
                 
                 -- Signal power-up active to client if Duration is defined and > 0
                 if powerUp.Duration and powerUp.Duration > 0 then
-                    if RemoteEventsManager and RemoteEventsManager.fireToClient then
-                        RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name or "Unknown PowerUp", powerUp.Duration)
-                    end
+                    RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name or "Unknown PowerUp", powerUp.Duration)
                 end
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             end
@@ -297,11 +263,7 @@ local function processRobuxReceipt(receiptInfo)
 end
 
 -- Set up MarketplaceService with redundancy
-if MarketplaceService then
-    MarketplaceService.ProcessReceipt = processRobuxReceipt
-else
-    warn("MarketplaceService not available")
-end
+MarketplaceService.ProcessReceipt = processRobuxReceipt
 
 -- Recovery and monitoring system
 local function monitorAndRecover()

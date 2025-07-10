@@ -16,15 +16,7 @@ local function loadConfigs()
         GameConfig = result
     else
         warn("Failed to load GameConfig:", result)
-        -- Fallback config
-        GameConfig = {
-            LOG_LEVEL = "debug",
-            FEEDBACK_DISPLAY_TIME = 3,
-            SPEED_BOOST_MULTIPLIER = 1.5,
-            HEALTH_BOOST_AMOUNT = 50,
-            BEE_SPAWN_COUNT = 5,
-            ENABLE_ROBUX_PURCHASES = true
-        }
+        GameConfig = nil
     end
     
     success, result = pcall(function()
@@ -34,15 +26,7 @@ local function loadConfigs()
         ShopConfig = result
     else
         warn("Failed to load ShopConfig:", result)
-        -- Fallback config
-        ShopConfig = {
-            POWER_UPS_DATA = {
-                {Name = "Speed Boost", ButtonName = "SpeedBoost", Cost = 2, Duration = 20},
-                {Name = "Health Boost", ButtonName = "HealthBoost", Cost = 4, Duration = 20},
-                {Name = "Bee Shield", ButtonName = "BeeShield", Cost = 5, Duration = 30},
-                {Name = "More Bees", ButtonName = "MoreBees", Cost = 10, Duration = 0}
-            }
-        }
+        ShopConfig = nil
     end
 end
 
@@ -56,11 +40,13 @@ local PowerUpActiveEvent = nil
 local PowerUpEndedEvent = nil
 
 local function loadRemoteEvents()
+    print("[DEBUG] Loading remote events...")
     local success, result = pcall(function()
         return ReplicatedStorage:WaitForChild("PowerUpShopEvent", 10)
     end)
     if success then
         shopEvent = result
+        print("[DEBUG] Successfully loaded PowerUpShopEvent")
     else
         warn("Failed to load PowerUpShopEvent:", result)
     end
@@ -70,6 +56,7 @@ local function loadRemoteEvents()
     end)
     if success then
         purchaseFeedbackEvent = result
+        print("[DEBUG] Successfully loaded PurchaseFeedbackEvent")
     else
         warn("Failed to load PurchaseFeedbackEvent:", result)
     end
@@ -79,6 +66,7 @@ local function loadRemoteEvents()
     end)
     if success then
         PowerUpActiveEvent = result
+        print("[DEBUG] Successfully loaded PowerUpActiveEvent")
     else
         warn("Failed to load PowerUpActiveEvent:", result)
     end
@@ -88,6 +76,7 @@ local function loadRemoteEvents()
     end)
     if success then
         PowerUpEndedEvent = result
+        print("[DEBUG] Successfully loaded PowerUpEndedEvent")
     else
         warn("Failed to load PowerUpEndedEvent:", result)
     end
@@ -258,17 +247,22 @@ local function setupEventConnections()
         end
         eventConnections.PurchaseFeedback = purchaseFeedbackEvent.OnClientEvent:Connect(function(message)
             safeExecute("purchaseFeedback", function()
-                local shopGui = player.PlayerGui:FindFirstChild("PowerUpShopGui")
-                if shopGui then
-                    local feedbackLabel = shopGui:FindFirstChild("FeedbackLabel")
-                    if feedbackLabel then
-                        feedbackLabel.Text = message or "Purchase processed"
-                        feedbackLabel.Visible = true
-                        task.delay(GameConfig and GameConfig.FEEDBACK_DISPLAY_TIME or 3, function()
-                            if feedbackLabel and feedbackLabel.Parent then
-                                feedbackLabel.Visible = false
-                            end
-                        end)
+                -- Show NotEnoughDrips text if purchase failed
+                if message == "Not enough HoneyDrips!" then
+                    local counterGui = player.PlayerGui:FindFirstChild("CounterGui")
+                    if counterGui then
+                        local notEnoughDrips = counterGui:FindFirstChild("NotEnoughDrips")
+                        if notEnoughDrips then
+                            -- Center the text on screen
+                            notEnoughDrips.AnchorPoint = Vector2.new(0.5, 0.5)
+                            notEnoughDrips.Position = UDim2.new(0.5, 0, 0.5, 0)
+                            notEnoughDrips.Visible = true
+                            task.delay(1, function()
+                                if notEnoughDrips then
+                                    notEnoughDrips.Visible = false
+                                end
+                            end)
+                        end
                     end
                 end
             end)
@@ -351,16 +345,38 @@ local function connectMainUIButton(buttonName, handler)
 end
 
 local function setupMainUIButtons()
-    if not ShopConfig or not ShopConfig.POWER_UPS_DATA then
+    if not ShopConfig then
         warn("ShopConfig not available for button setup")
+        return
+    end
+    if not ShopConfig.POWER_UPS_DATA then
+        warn("ShopConfig.POWER_UPS_DATA not available for button setup")
         return
     end
     
     safeExecute("setupMainUIButtons", function()
+        -- Debug: List all available buttons in MainUI
+        local playerGui = player:WaitForChild("PlayerGui", 10)
+        if playerGui then
+            local mainUI = playerGui:FindFirstChild("MainUI")
+            if mainUI then
+                print("[DEBUG] Available buttons in MainUI:")
+                for _, child in ipairs(mainUI:GetChildren()) do
+                    if child:IsA("GuiObject") then
+                        print("  - " .. child.Name)
+                    end
+                end
+            else
+                warn("MainUI not found for button listing")
+            end
+        end
+        
         for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
-            local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
+            local buttonName = powerUp.Name:gsub(" ", "")
+            print("[DEBUG] Looking for button:", buttonName, "for power-up:", powerUp.Name)
             if buttonName then
                 connectMainUIButton(buttonName, function()
+                    print("[DEBUG] Button clicked:", buttonName)
                     safeExecute("buttonClickHandler", function()
                         if powerUp.ProductId and powerUp.EnableRobuxPurchase then
                             logDebug(buttonName .. " button clicked, prompting Robux purchase.")
@@ -368,6 +384,7 @@ local function setupMainUIButtons()
                             MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
                         elseif powerUp.Cost and shopEvent then
                             logDebug(buttonName .. " button clicked, purchasing with HoneyDrips.")
+                            print("[DEBUG] Firing PowerUpShopEvent with index:", i)
                             shopEvent:FireServer(i)
                         else
                             logDebug(buttonName .. " button clicked, but no valid purchase method found.")
@@ -412,8 +429,12 @@ local function clearAllPowerUpTimers()
 end
 
 local function setupGlobalTooltip()
-    if not ShopConfig or not ShopConfig.POWER_UPS_DATA then
+    if not ShopConfig then
         warn("ShopConfig not available for tooltip setup")
+        return
+    end
+    if not ShopConfig.POWER_UPS_DATA then
+        warn("ShopConfig.POWER_UPS_DATA not available for tooltip setup")
         return
     end
     
@@ -428,7 +449,7 @@ local function setupGlobalTooltip()
         if not globalTooltip then return end
 
         for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
-            local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
+            local buttonName = powerUp.Name:gsub(" ", "")
             if buttonName then
                 local button = mainUI:FindFirstChild(buttonName)
                 if button then
@@ -472,7 +493,9 @@ local function monitorAndRecover()
         while true do
             task.wait(5) -- Check every 5 seconds
             
-            if not ShopConfig or not ShopConfig.POWER_UPS_DATA then
+            if not ShopConfig then
+                loadConfigs() -- Try to reload configs
+            elseif not ShopConfig.POWER_UPS_DATA then
                 loadConfigs() -- Try to reload configs
             else
                 local playerGui = player:FindFirstChild("PlayerGui")
@@ -481,7 +504,7 @@ local function monitorAndRecover()
                     if mainUI then
                         -- Check if any buttons are missing connections
                         for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
-                            local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
+                            local buttonName = powerUp.Name:gsub(" ", "")
                             if buttonName then
                                 local button = mainUI:FindFirstChild(buttonName)
                                 if button and not buttonConnections[button] then
@@ -509,7 +532,10 @@ end
 -- Initialize everything with redundancy
 local function initializeShop()
     -- Load configs if not loaded
-    if not GameConfig or not ShopConfig then
+    if not GameConfig then
+        loadConfigs()
+    end
+    if not ShopConfig then
         loadConfigs()
     end
     
