@@ -5,9 +5,13 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
 local ServerStorage = game:GetService("ServerStorage") -- Get ServerStorage
-local Debris = game:GetService("Debris") -- Get Debris Service
-local DEBUG = false -- Set to false to disable debug honey drips
-local DEBUG_HONEY_DRIPS_VALUE = 100
+
+-- Require GameConfig for constants
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+
+-- Server-specific constants
+local DEFAULT_SPAWN_POSITION = Vector3.new(0, 5, 0)
+
 
 -- Initialize player stats when they join
 local function initializePlayerStats(player)
@@ -37,14 +41,14 @@ end
 local function setDebugHoneyDrips(player)
     local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats")
     local honeyDrips = leaderstats:FindFirstChild("HoneyDrips") or leaderstats:WaitForChild("HoneyDrips")
-    honeyDrips.Value = DEBUG_HONEY_DRIPS_VALUE
+    honeyDrips.Value = GameConfig.DEBUG_HONEY_DRIPS_VALUE
 end
 
 -- Connect player joining
 game.Players.PlayerAdded:Connect(function(player)
     -- debugPrint("Player joined: ", player.Name)
     initializePlayerStats(player)
-    if DEBUG then
+    if GameConfig.DEBUG then
         setDebugHoneyDrips(player)
     end
 end)
@@ -117,7 +121,7 @@ print("Services initialized")
 
 -- Audio Setup
 local buzSounds = {}
-for i = 1, 2 do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
+for i = 1, GameConfig.BUZ_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_buz" .. (i > 1 and tostring(i) or ""))
     if sound then
         table.insert(buzSounds, sound)
@@ -128,7 +132,7 @@ end
 -- debugPrint("Found ", #buzSounds, " buz sounds.")
 
 local stingSounds = {}
-for i = 1, 5 do -- Assuming robloxMoreBeesAudio_sting, _sting2, ..., _sting5
+for i = 1, GameConfig.STING_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_sting, _sting2, ..., _sting5
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_sting" .. (i > 1 and tostring(i) or ""))
     if sound then
         table.insert(stingSounds, sound)
@@ -139,7 +143,7 @@ end
 -- debugPrint("Found ", #stingSounds, " sting sounds.")
 
 local honeyDripSounds = {}
-for i = 1, 2 do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
+for i = 1, GameConfig.HONEYDRIP_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or ""))
     if sound then
         table.insert(honeyDripSounds, sound)
@@ -153,28 +157,7 @@ if #buzSounds == 0 then warn("No buz sounds found in ServerStorage!") end
 if #stingSounds == 0 then warn("No sting sounds found in ServerStorage!") end
 if #honeyDripSounds == 0 then warn("No HoneyDrip sounds found in ServerStorage!") end
 
--- Spawn control
-local swarm = false -- Set to true to enable bee swarming behavior
-local AUTO_SPAWN_INTERVAL = 1 -- Spawn a bee every 10 seconds
-local BASE_MIN_BEES = 30 -- Base minimum number of bees
-local BEES_PER_PLAYER = 5 -- Additional bees per player
-local MIN_SPAWN_INTERVAL = 1 -- Spawn every second when below minimum
-local MAX_SPAWN_INTERVAL = 10 -- Normal spawn interval when at or above minimum
-
--- Constants for HoneyDrip spawning
-local MAX_HONEYDRIPS = 20 -- Maximum number of HoneyDrips allowed in workspace
-local BASE_DRIP_SPAWN_INTERVAL = 10 -- Base interval in seconds for drips to spawn
-local DRIP_SPAWN_DECREASE_PER_BEE = 0.5 -- How much interval decreases per alive bee
-
--- New constants for HoneyDrip drops from flying bees
-local FLYING_BEE_DRIP_CHANCE = 25 -- 25% chance for a HoneyDrip to drop from a flying bee per check
-local FLYING_BEE_DRIP_CHECK_INTERVAL = 10 -- seconds between drop checks for a flying bee
-
-local HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health HoneyDrip restores
-
--- Bee Stamina Constants
-local MAX_CHASE_TIME = 5 -- seconds a bee can chase before getting tired
-local TIRED_SPEED_MULTIPLIER = 4 -- Multiplier for speed when tired (e.g., 1.5 means 1.5x slower)
+-- All spawn control and game constants are now in GameConfig
 
 -- debugPrint("Before createHoneyDrip definition: createHoneyDrip is ", tostring(createHoneyDrip))
 -- Function to create and spawn a HoneyDrip item near the BeeHive
@@ -194,7 +177,7 @@ local function createHoneyDrip(initialPosition)
     -- Ensure the new drip is unanchored and collidable so it falls
     newDrip.Anchored = false
     newDrip.CanCollide = true -- So it can land on the ground
-    newDrip.Transparency = 0 -- Ensure it's visible
+    newDrip.Transparency = GameConfig.HONEYDRIP_TRANSPARENCY -- Ensure it's visible
 
     local spawnPosition = initialPosition or Vector3.new(0, 0, 0) -- Default if no initialPosition
 
@@ -203,9 +186,9 @@ local function createHoneyDrip(initialPosition)
         if beeHive and beeHive.PrimaryPart then
             -- Spawn on the ground under the BeeHive with a small random offset
             spawnPosition = Vector3.new(
-                beeHive.PrimaryPart.Position.X + math.random(-2, 2), -- Small X offset
-                0, -- Ground level
-                beeHive.PrimaryPart.Position.Z + math.random(-2, 2)  -- Small Z offset
+                beeHive.PrimaryPart.Position.X + math.random(-GameConfig.BEEHIVE_SPAWN_OFFSET_X, GameConfig.BEEHIVE_SPAWN_OFFSET_X), -- Small X offset
+                GameConfig.BEEHIVE_SPAWN_Y, -- Ground level
+                beeHive.PrimaryPart.Position.Z + math.random(-GameConfig.BEEHIVE_SPAWN_OFFSET_Z, GameConfig.BEEHIVE_SPAWN_OFFSET_Z)  -- Small Z offset
             )
         else
             warn("BeeHive or its PrimaryPart not found. Spawning HoneyDrip at default position.")
@@ -227,13 +210,13 @@ local function createHoneyDrip(initialPosition)
             if character and character:FindFirstChildOfClass("Humanoid") then
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid.Health < humanoid.MaxHealth then
-                    humanoid.Health = math.min(humanoid.Health + HEAL_AMOUNT_HONEYDRIP, humanoid.MaxHealth)
+                    humanoid.Health = math.min(humanoid.Health + GameConfig.HEAL_AMOUNT_HONEYDRIP, humanoid.MaxHealth)
                     -- debugPrint(player.Name, " healed by HoneyDrip. Current health:", humanoid.Health)
                     
                     -- Visual feedback: brief color flash
                     local originalColor = player.Character.HumanoidRootPart.BrickColor
-                    player.Character.HumanoidRootPart.BrickColor = BrickColor.new("Bright green")
-                    task.delay(0.1, function() -- Flash for 0.1 seconds
+                    player.Character.HumanoidRootPart.BrickColor = BrickColor.new(GameConfig.HEAL_FLASH_COLOR)
+                    task.delay(GameConfig.HEAL_FLASH_DURATION, function() -- Flash for configured duration
                         if player.Character and player.Character.HumanoidRootPart then
                             player.Character.HumanoidRootPart.BrickColor = originalColor
                         end
@@ -244,7 +227,7 @@ local function createHoneyDrip(initialPosition)
                 if #honeyDripSounds > 0 then
                     local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
                     chosenDripSound.Parent = newDrip -- Parent to the picked up drip
-                    chosenDripSound.Volume = 0.7 -- Set a default volume
+                    chosenDripSound.Volume = GameConfig.SOUND_VOLUME -- Set volume from config
                     -- debugPrint("Attempting to play HoneyDrip sound: ", chosenDripSound.Name)
                     chosenDripSound:Play()
                     game:GetService("Debris"):AddItem(chosenDripSound, chosenDripSound.TimeLength) -- Clean up sound after playing
@@ -258,7 +241,7 @@ local function createHoneyDrip(initialPosition)
                 
                 -- Get the value from the HoneyDrip model itself
                 local honeyDripValueObject = newDrip:FindFirstChild("DripAmount") -- Now looking for "DripAmount"
-                local amountToAdd = 1 -- Default to 1 if DripAmount object not found
+                local amountToAdd = GameConfig.DEFAULT_HONEYDRIP_AMOUNT -- Default to config value if DripAmount object not found
                 if honeyDripValueObject and honeyDripValueObject:IsA("NumberValue") then
                     amountToAdd = honeyDripValueObject.Value
                     -- debugPrint("HoneyDrip (", newDrip.Name, ") has value of ", amountToAdd)
@@ -274,8 +257,8 @@ local function createHoneyDrip(initialPosition)
             end
             
             -- Destroy the HoneyDrip after pickup
-            -- debugPrint("Destroying HoneyDrip (", newDrip.Name, ") after pickup. Waiting 0.1s.")
-            task.wait(0.1) -- Small delay to allow events to fully process
+            -- debugPrint("Destroying HoneyDrip (", newDrip.Name, ") after pickup. Waiting configured delay.")
+            task.wait(GameConfig.HONEYDRIP_PICKUP_DELAY) -- Small delay to allow events to fully process
             newDrip:Destroy()
         end)
     else
@@ -285,24 +268,19 @@ local function createHoneyDrip(initialPosition)
     return newDrip
 end
 
--- Define Collision Groups
-local BEEHIVE_COLLISION_GROUP = "BeeHiveGroup"
-local CUBE_COLLISION_GROUP = "FlyingGroup"
-local PLAYER_COLLISION_GROUP = "PlayerGroup"
-
 -- Set up collision rules
 -- Ensure groups exist, then disable collisions between them
 local function setupCollisionGroups()
     -- Register groups if they don't exist
-    PhysicsService:RegisterCollisionGroup(BEEHIVE_COLLISION_GROUP)
-    PhysicsService:RegisterCollisionGroup(CUBE_COLLISION_GROUP)
-    PhysicsService:RegisterCollisionGroup(PLAYER_COLLISION_GROUP)
+    PhysicsService:RegisterCollisionGroup(GameConfig.BEEHIVE_COLLISION_GROUP)
+    PhysicsService:RegisterCollisionGroup(GameConfig.CUBE_COLLISION_GROUP)
+    PhysicsService:RegisterCollisionGroup(GameConfig.PLAYER_COLLISION_GROUP)
 
     -- Disable collisions between BeeHiveGroup and FlyingGroup
-    PhysicsService:CollisionGroupSetCollidable(BEEHIVE_COLLISION_GROUP, CUBE_COLLISION_GROUP, false)
+    PhysicsService:CollisionGroupSetCollidable(GameConfig.BEEHIVE_COLLISION_GROUP, GameConfig.CUBE_COLLISION_GROUP, false)
     
     -- Disable collisions between FlyingGroup (bees) and PlayerGroup (players)
-    PhysicsService:CollisionGroupSetCollidable(CUBE_COLLISION_GROUP, PLAYER_COLLISION_GROUP, false)
+    PhysicsService:CollisionGroupSetCollidable(GameConfig.CUBE_COLLISION_GROUP, GameConfig.PLAYER_COLLISION_GROUP, false)
 end
 
 -- Call this once at server start
@@ -322,7 +300,7 @@ local function getBeeCount()
     for _, obj in ipairs(workspace:GetChildren()) do
         if obj.Name == "FlyingCube" then
             local isAliveValue = obj:FindFirstChild("IsAlive")
-            if isAliveValue and isAliveValue.Value == 1 then
+            if isAliveValue and isAliveValue.Value == GameConfig.BEE_ALIVE_VALUE then
                 count = count + 1
                 -- debugPrint("getBeeCount: Counting alive bee ", obj.Name)
             else
@@ -384,7 +362,7 @@ local function createFlyingCube(customColor)
     -- Assign Bee to its collision group and ensure all parts are non-collidable and unanchored
     for _, part in ipairs(bee:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.CollisionGroup = CUBE_COLLISION_GROUP
+            part.CollisionGroup = GameConfig.CUBE_COLLISION_GROUP
             part.Anchored = false -- Ensure bee parts are not anchored so BodyMovers can affect them
             -- debugPrint("Bee part ", part.Name, " initial CanCollide: ", tostring(part.CanCollide))
         end
@@ -417,11 +395,11 @@ local function createFlyingCube(customColor)
     -- Add IsAlive status
     local isAlive = Instance.new("IntValue")
     isAlive.Name = "IsAlive"
-    isAlive.Value = 1 -- 1 for alive, 0 for dead
+            isAlive.Value = GameConfig.BEE_ALIVE_VALUE -- 1 for alive, 0 for dead
     isAlive.Parent = bee
 
     -- Stamina tracking for this bee
-    local chaseTime = MAX_CHASE_TIME -- How long this bee has been actively chasing a player
+    local chaseTime = GameConfig.MAX_CHASE_TIME -- How long this bee has been actively chasing a player
 
     -- Create BillboardGui for stamina display
     local staminaGui = Instance.new("BillboardGui")
@@ -434,20 +412,20 @@ local function createFlyingCube(customColor)
     local staminaText = Instance.new("TextLabel")
     staminaText.Name = "StaminaText"
     staminaText.Size = UDim2.new(1, 0, 1, 0)
-    staminaText.BackgroundTransparency = 1
+            staminaText.BackgroundTransparency = GameConfig.STAMINA_TEXT_BACKGROUND_TRANSPARENCY
     staminaText.TextScaled = true
     staminaText.TextColor3 = Color3.new(1, 1, 0) -- Yellow color for stamina
     staminaText.TextStrokeColor3 = Color3.new(0, 0, 0)
-    staminaText.TextStrokeTransparency = 0
+            staminaText.TextStrokeTransparency = GameConfig.STAMINA_TEXT_STROKE_TRANSPARENCY
     staminaText.Font = Enum.Font.SourceSansBold
     staminaText.Text = "Stamina: 0.00"
     staminaText.Parent = staminaGui
 
     -- Aggravation Radius
-    local aggravationRadius = 25 -- Bees will only attack if player is within 25 studs
+            local aggravationRadius = GameConfig.AGRAVATION_RADIUS -- Bees will only attack if player is within configured radius
 
     -- BodyMover Multiplier, larger is "slower"
-    local BODY_MOVER_MULTIPLIER = 2500 -- Multiply P and D values by this to work with smaller numbers
+            local BODY_MOVER_MULTIPLIER = GameConfig.BODY_MOVER_MULTIPLIER -- Multiply P and D values by this to work with smaller numbers
 
     -- Find the BeeHive and set spawn position
     local spawnPosition = Vector3.new(0, 25, 0) -- Default spawn if BeeHive not found or no PrimaryPart
@@ -457,7 +435,7 @@ local function createFlyingCube(customColor)
         -- Assign BeeHive to its collision group (if it has parts)
         for _, part in ipairs(beeHive:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CollisionGroup = BEEHIVE_COLLISION_GROUP
+                part.CollisionGroup = GameConfig.BEEHIVE_COLLISION_GROUP
             end
         end
         if beeHive.PrimaryPart then
@@ -483,16 +461,16 @@ local function createFlyingCube(customColor)
     -- Add BodyPosition and BodyGyro for flying
     local bodyPosition = Instance.new("BodyPosition")
     bodyPosition.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-    bodyPosition.P = 10 * BODY_MOVER_MULTIPLIER
-    bodyPosition.D = 1 * BODY_MOVER_MULTIPLIER
+            bodyPosition.P = GameConfig.BODY_POSITION_P * BODY_MOVER_MULTIPLIER
+        bodyPosition.D = GameConfig.BODY_POSITION_D * BODY_MOVER_MULTIPLIER
     bodyPosition.Position = primaryPart.Position
     bodyPosition.Parent = primaryPart
     -- debugPrint("BodyPosition created and parented to ", primaryPart.Name)
 
     local bodyGyro = Instance.new("BodyGyro")
     bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
-    bodyGyro.P = 10 * BODY_MOVER_MULTIPLIER
-    bodyGyro.D = 1 * BODY_MOVER_MULTIPLIER
+            bodyGyro.P = GameConfig.BODY_GYRO_P * BODY_MOVER_MULTIPLIER
+        bodyGyro.D = GameConfig.BODY_GYRO_D * BODY_MOVER_MULTIPLIER
     bodyGyro.CFrame = primaryPart.CFrame
     bodyGyro.Parent = primaryPart
     -- debugPrint("BodyGyro created and parented to ", primaryPart.Name)
@@ -515,7 +493,7 @@ local function createFlyingCube(customColor)
     local randomTargetPosition = Vector3.new(0, 0, 0)
     local function generateRandomTarget()
         local mapCenter = Vector3.new(0, 20, 0) -- A general center point for wandering
-        local wanderRadius = 100 -- How far bees can wander from the center
+        local wanderRadius = GameConfig.WANDER_RADIUS -- How far bees can wander from the center
         randomTargetPosition = mapCenter + Vector3.new(
             math.random(-wanderRadius, wanderRadius),
             math.random(-5, 20), -- Varying height for more natural flight
@@ -561,12 +539,12 @@ local function createFlyingCube(customColor)
         if shouldAttackPlayer then
             chaseTime = math.max(0, chaseTime - dt) -- Stamina decreases when chasing
         else
-            chaseTime = math.min(MAX_CHASE_TIME, chaseTime + dt) -- Stamina recovers when not chasing
+            chaseTime = math.min(GameConfig.MAX_CHASE_TIME, chaseTime + dt) -- Stamina recovers when not chasing
         end
 
         local currentSpeedMultiplier = 1.0
         if chaseTime <= 0 then -- Bee is tired when stamina is 0 or less
-            currentSpeedMultiplier = TIRED_SPEED_MULTIPLIER
+            currentSpeedMultiplier = GameConfig.TIRED_SPEED_MULTIPLIER
             -- debugPrint("Bee " .. bee.Name .. " is tired! Speed multiplier: ", currentSpeedMultiplier)
         end
 
@@ -575,7 +553,7 @@ local function createFlyingCube(customColor)
         bodyPosition.D = (1 * BODY_MOVER_MULTIPLIER) * currentSpeedMultiplier
 
         -- Update stamina display
-        staminaText.Text = string.format("Stamina: %.2f / %d", chaseTime, MAX_CHASE_TIME)
+        staminaText.Text = string.format("Stamina: %.2f / %d", chaseTime, GameConfig.MAX_CHASE_TIME)
         if chaseTime <= 0 then
             staminaText.TextColor3 = Color3.new(1, 0, 0) -- Red when tired
         else
@@ -627,9 +605,9 @@ local function createFlyingCube(customColor)
 
         -- Check for HoneyDrip drop from flying bee
         local now = tick()
-        if now - lastDripDropAttemptTime > FLYING_BEE_DRIP_CHECK_INTERVAL then
+        if now - lastDripDropAttemptTime > GameConfig.FLYING_BEE_DRIP_CHECK_INTERVAL then
             lastDripDropAttemptTime = now
-            if math.random(1, 100) <= FLYING_BEE_DRIP_CHANCE then
+            if math.random(1, 100) <= GameConfig.FLYING_BEE_DRIP_CHANCE then
                 -- debugPrint("HoneyDrip dropped from flying bee")
                 createHoneyDrip(primaryPart.Position)
             end
@@ -680,7 +658,7 @@ local function createFlyingCube(customColor)
 
                         -- Mark bee as dead
                         isBeeDead = true
-                        isAlive.Value = 0
+                        isAlive.Value = GameConfig.BEE_DEAD_VALUE
                         updateBeeCount()
 
                         -- Stop all movement and chasing
@@ -705,7 +683,7 @@ local function createFlyingCube(customColor)
                         for _, part in ipairs(bee:GetDescendants()) do
                             if part:IsA("BasePart") then
                                 -- Make parts transparent
-                                part.Transparency = 0.8
+                                part.Transparency = GameConfig.BEE_DEATH_TRANSPARENCY
                                 -- Keep collision enabled initially so it doesn't fall through
                                 part.CanCollide = true
                                 -- Add gravity to make it fall
@@ -811,14 +789,14 @@ local function onPlayerAdded(player)
         local humanoid = character:WaitForChild("Humanoid")
         currentScore = 0
         lastUpdate = tick()
-        if DEBUG then
+        if GameConfig.DEBUG then
             setDebugHoneyDrips(player)
         end
         
         -- Set player character parts to the PlayerGroup collision group
         for _, part in ipairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CollisionGroup = PLAYER_COLLISION_GROUP
+                part.CollisionGroup = GameConfig.PLAYER_COLLISION_GROUP
             end
         end
 
@@ -831,7 +809,7 @@ local function onPlayerAdded(player)
             end
             
             local now = tick()
-            if now - lastUpdate >= 1 then
+            if now - lastUpdate >= GameConfig.SCORE_UPDATE_INTERVAL then
                 currentScore = currentScore + 1
                 lastUpdate = now
                 updatePlayerScore(player, currentScore)
@@ -846,8 +824,8 @@ local function onPlayerAdded(player)
             -- Reset HoneyDrips
             updatePlayerHoneyDrips(player, 0)
             -- Remove all active effects
-            humanoid.WalkSpeed = 16 -- default WalkSpeed
-            humanoid.MaxHealth = 100 -- default MaxHealth
+            humanoid.WalkSpeed = GameConfig.DEFAULT_WALK_SPEED -- default WalkSpeed
+            humanoid.MaxHealth = GameConfig.DEFAULT_MAX_HEALTH -- default MaxHealth
             player:SetAttribute("BeeShield", false)
             -- Optionally, fire PowerUpEndedEvent for all power-ups to the client here
         end)
@@ -856,7 +834,7 @@ local function onPlayerAdded(player)
     -- Set initial spawn position
     player.CharacterAdded:Connect(function(character)
         local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-        humanoidRootPart.CFrame = CFrame.new(0, 5, 0)
+        humanoidRootPart.CFrame = CFrame.new(DEFAULT_SPAWN_POSITION)
     end)
 end
 
@@ -884,7 +862,7 @@ local function getMinRequiredBees()
     for _, _ in ipairs(Players:GetPlayers()) do
         playerCount = playerCount + 1
     end
-    return BASE_MIN_BEES + (playerCount * BEES_PER_PLAYER)
+    return GameConfig.BASE_MIN_BEES + (playerCount * GameConfig.BEES_PER_PLAYER)
 end
 
 -- Automatic bee spawner
@@ -894,10 +872,10 @@ local function startAutoSpawner()
         local minRequiredBees = getMinRequiredBees()
         
         -- Determine spawn interval based on current bee count
-        local spawnInterval = currentBees < minRequiredBees and MIN_SPAWN_INTERVAL or MAX_SPAWN_INTERVAL
+        local spawnInterval = currentBees < minRequiredBees and GameConfig.MIN_SPAWN_INTERVAL or GameConfig.MAX_SPAWN_INTERVAL
         
         -- Always spawn if below minimum, otherwise spawn at max interval
-        if currentBees < MAX_HONEYDRIPS then
+        if currentBees < GameConfig.MAX_HONEYDRIPS then
             -- debugPrint("Auto-spawning bee. Current:", currentBees, "Minimum Required:", minRequiredBees, "Interval:", spawnInterval)
             createFlyingCube()
         else

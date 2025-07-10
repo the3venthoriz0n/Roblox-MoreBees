@@ -2,9 +2,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Require the shared shop configuration
+-- Require the shared configurations
 local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local POWER_UPS = ShopConfig.POWER_UPS_DATA
+
+-- Client-specific UI constants
+local ACTIVE_EFFECTS_POSITION = UDim2.new(0, 10, 0, 70) -- Position of active effects display
+local ACTIVE_EFFECTS_SIZE = UDim2.new(0, 200, 0, 0) -- Size of active effects container
 
 -- Get RemoteEvents
 local shopEvent = ReplicatedStorage:WaitForChild("PowerUpShopEvent")
@@ -22,8 +27,8 @@ activePowerUpGui.Parent = player:WaitForChild("PlayerGui")
 
 local activeEffectsContainer = Instance.new("Frame")
 activeEffectsContainer.Name = "ActiveEffectsContainer"
-activeEffectsContainer.Size = UDim2.new(0, 200, 0, 0) -- Width fixed, height will grow dynamically
-activeEffectsContainer.Position = UDim2.new(0, 10, 0, 70) -- Top-left, below default Roblox topbar
+activeEffectsContainer.Size = ACTIVE_EFFECTS_SIZE -- Width fixed, height will grow dynamically
+activeEffectsContainer.Position = ACTIVE_EFFECTS_POSITION -- Top-left, below default Roblox topbar
 activeEffectsContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 activeEffectsContainer.BackgroundTransparency = 0.7
 activeEffectsContainer.BorderSizePixel = 0
@@ -120,7 +125,7 @@ purchaseFeedbackEvent.OnClientEvent:Connect(function(message)
         if feedbackLabel then
             feedbackLabel.Text = message
             feedbackLabel.Visible = true
-            task.delay(3, function()
+            task.delay(GameConfig.FEEDBACK_DISPLAY_TIME, function()
                 if feedbackLabel then
                     feedbackLabel.Visible = false
                 end
@@ -157,7 +162,7 @@ local function clearActiveEffectsDisplay()
         end
     end
     activePowerUpLabels = {}
-    activeEffectsContainer.Size = UDim2.new(0, 200, 0, 0)
+    activeEffectsContainer.Size = ACTIVE_EFFECTS_SIZE
 end
 
 player.CharacterAdded:Connect(function(character)

@@ -2,18 +2,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
-local LOG_LEVEL = "debug" -- or "info"
-
-local function logDebug(...)
-    if LOG_LEVEL == "debug" then
-        print("[DEBUG]", ...)
-    end
-end
-
-
 -- Require modules
 local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local PowerUpEffects = require(script.Parent.PowerUpEffects)
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+
+local function logDebug(...)
+    if GameConfig.LOG_LEVEL == "debug" then
+        print("[DEBUG]", ...)
+    end
+end
 
 -- Define server-side POWER_UPS with effects (durations will come from ShopConfig)
 -- This table will combine the shared data with server-specific logic

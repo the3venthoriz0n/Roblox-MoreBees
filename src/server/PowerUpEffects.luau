@@ -1,6 +1,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Require GameConfig for constants
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+
 local PowerUpEffects = {}
 
 -- Helper function to fire power-up ended events
@@ -19,7 +22,7 @@ function PowerUpEffects.SpeedBoost(character, duration)
     local humanoid = character:FindFirstChild("Humanoid")
     if humanoid then
         local originalSpeed = humanoid.WalkSpeed
-        humanoid.WalkSpeed = originalSpeed * 1.5
+        humanoid.WalkSpeed = originalSpeed * GameConfig.SPEED_BOOST_MULTIPLIER
         task.delay(duration, function()
             if humanoid and humanoid.Parent then
                 humanoid.WalkSpeed = originalSpeed
@@ -34,8 +37,8 @@ function PowerUpEffects.HealthBoost(character, duration)
     local humanoid = character:FindFirstChild("Humanoid")
     if humanoid then
         local originalMaxHealth = humanoid.MaxHealth
-        humanoid.MaxHealth = originalMaxHealth + 50
-        humanoid.Health = humanoid.Health + 50
+        humanoid.MaxHealth = originalMaxHealth + GameConfig.HEALTH_BOOST_AMOUNT
+        humanoid.Health = humanoid.Health + GameConfig.HEALTH_BOOST_AMOUNT
         task.delay(duration, function()
             if humanoid and humanoid.Parent then
                 humanoid.MaxHealth = originalMaxHealth
@@ -64,7 +67,7 @@ end
 function PowerUpEffects.SpawnBees(character, duration)
     local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
     if spawnBeesRequestEvent then
-        spawnBeesRequestEvent:Fire(10, BrickColor.new("Really red"))
+        spawnBeesRequestEvent:Fire(GameConfig.BEE_SPAWN_COUNT, BrickColor.new(GameConfig.BEE_SPAWN_COLOR))
     else
         warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
     end
