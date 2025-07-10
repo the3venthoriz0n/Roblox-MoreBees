@@ -13,7 +13,17 @@ local function getPlayer(character)
 end
 
 local function startOrExtendEffect(player, effectName, duration, onStart, onEnd)
-    activeEffects[player] = activeEffects[player] or {}
+    -- Safety check: ensure player is valid
+    if not player or not player:IsA("Player") then
+        warn("[PowerUpEffects] Invalid player passed to startOrExtendEffect")
+        return
+    end
+    
+    -- Ensure activeEffects table exists for this player
+    if not activeEffects[player] then
+        activeEffects[player] = {}
+    end
+    
     local now = os.clock()
     local effect = activeEffects[player][effectName]
 
@@ -37,8 +47,14 @@ local function startOrExtendEffect(player, effectName, duration, onStart, onEnd)
                 task.wait(0.2)
             end
             if onEnd then onEnd(effect) end
-            RemoteEventsManager.firePowerUpEnded(player.Character, effectName)
-            activeEffects[player][effectName] = nil
+            -- Safety check before accessing player.Character
+            if player and player.Character then
+                RemoteEventsManager.firePowerUpEnded(player.Character, effectName)
+            end
+            -- Safety check before clearing effect
+            if activeEffects[player] then
+                activeEffects[player][effectName] = nil
+            end
         end)()
     end
 end
@@ -143,7 +159,13 @@ end
 
 -- Clear all active effects for a player (called on death)
 function PowerUpEffects.clearAllEffects(player)
-    if not player or not activeEffects[player] then
+    -- Safety check: ensure player is valid
+    if not player or not player:IsA("Player") then
+        warn("[PowerUpEffects] Invalid player passed to clearAllEffects")
+        return
+    end
+    
+    if not activeEffects[player] then
         return
     end
     
@@ -158,7 +180,7 @@ function PowerUpEffects.clearAllEffects(player)
         
         -- Reset character properties based on effect type
         local character = player.Character
-        if character and character.Parent then
+        if character then
             local humanoid = character:FindFirstChild("Humanoid")
             
             if effectName == "Speed Boost" and effect and effect.originalSpeed and humanoid then
@@ -178,14 +200,9 @@ function PowerUpEffects.clearAllEffects(player)
             end
         end
         
-        -- Notify client that effect ended (only if character still exists)
-        if character and character.Parent then
-            local success, err = pcall(function()
-                RemoteEventsManager.firePowerUpEnded(character, effectName)
-            end)
-            if not success then
-                warn("[DEBUG] Failed to notify client about effect end:", err)
-            end
+        -- Notify client that effect ended
+        if character then
+            RemoteEventsManager.firePowerUpEnded(character, effectName)
         end
     end
     
