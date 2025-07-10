@@ -114,15 +114,15 @@ local buttonConnections = {}
 local function connectMainUIButton(buttonName, handler)
     local playerGui = player:WaitForChild("PlayerGui")
     local function tryConnect()
-        local mainUI = playerGui:FindFirstChild("MainUI")
+        local mainUI = playerGui:WaitForChild("MainUI")
         local button = mainUI and mainUI:FindFirstChild(buttonName)
         if button then
             -- Always disconnect previous connection for this button
-            if buttonConnections[buttonName] then
-                buttonConnections[buttonName]:Disconnect()
+            if buttonConnections[button] then
+                buttonConnections[button]:Disconnect()
             end
             -- Connect the new handler
-            buttonConnections[buttonName] = button.MouseButton1Click:Connect(handler)
+            buttonConnections[button] = button.MouseButton1Click:Connect(handler)
             logDebug(buttonName .. " button connected! (instance: " .. tostring(button) .. ")")
         else
             logDebug(buttonName .. " button not found, retrying...")
@@ -132,16 +132,9 @@ local function connectMainUIButton(buttonName, handler)
     tryConnect()
 end
 
-local function disconnectAllMainUIButtons()
-    for name, conn in pairs(buttonConnections) do
-        if conn then conn:Disconnect() end
-        buttonConnections[name] = nil
-    end
-end
-
 local function setupMainUIButtons()
     local playerGui = player:WaitForChild("PlayerGui")
-    local mainUI = playerGui:FindFirstChild("MainUI") -- Ensure MainUI exists before proceeding
+    local mainUI = playerGui:WaitForChild("MainUI") -- Use WaitForChild for robustness
     for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
         local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
         connectMainUIButton(buttonName, function()
@@ -159,17 +152,21 @@ local function setupMainUIButtons()
     end
 end
 
--- Call setupMainUIButtons only after MainUI is present
-local playerGui = player:WaitForChild("PlayerGui")
-if playerGui:FindFirstChild("MainUI") then
-    setupMainUIButtons()
-else
-    playerGui.ChildAdded:Connect(function(child)
-        if child.Name == "MainUI" then
-            setupMainUIButtons()
-        end
-    end)
-end
+-- -- Listen for MainUI being added or recreated
+-- local playerGui = player:WaitForChild("PlayerGui")
+-- local function onMainUIReady()
+--     setupMainUIButtons()
+-- end
+
+-- if playerGui:FindFirstChild("MainUI") then
+--     onMainUIReady()
+-- end
+
+-- playerGui.ChildAdded:Connect(function(child)
+--     if child.Name == "MainUI" then
+--         onMainUIReady()
+--     end
+-- end)
 
 local function clearAllPowerUpTimers()
     local playerGui = player:FindFirstChild("PlayerGui")
@@ -232,10 +229,8 @@ end
 
 -- Hook into player death to clear timers and effects
 player.CharacterAdded:Connect(function(character)
-    disconnectAllMainUIButtons()
     local humanoid = character:WaitForChild("Humanoid")
     humanoid.Died:Connect(function()
-        disconnectAllMainUIButtons()
         clearAllPowerUpTimers()
     end)
     task.wait(0.1)
