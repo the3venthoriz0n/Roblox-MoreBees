@@ -17,32 +17,6 @@ local PowerUpActiveEvent = ReplicatedStorage:WaitForChild("PowerUpActiveEvent") 
 local PowerUpEndedEvent = ReplicatedStorage:WaitForChild("PowerUpEndedEvent") -- New: Get power-up ended event
 
 
--- Active Power-Up Display GUI
-local activePowerUpGui = Instance.new("ScreenGui")
-activePowerUpGui.Name = "ActivePowerUpDisplayGui"
-activePowerUpGui.ResetOnSpawn = false
-activePowerUpGui.Parent = player:WaitForChild("PlayerGui")
-
-local activeEffectsContainer = Instance.new("Frame")
-activeEffectsContainer.Name = "ActiveEffectsContainer"
-activeEffectsContainer.Size = ACTIVE_EFFECTS_SIZE -- Width fixed, height will grow dynamically
-activeEffectsContainer.Position = ACTIVE_EFFECTS_POSITION -- Top-left, below default Roblox topbar
-activeEffectsContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-activeEffectsContainer.BackgroundTransparency = 0.7
-activeEffectsContainer.BorderSizePixel = 0
-activeEffectsContainer.ClipsDescendants = true
-activeEffectsContainer.Parent = activePowerUpGui
-
-local activeEffectsLayout = Instance.new("UIListLayout")
-activeEffectsLayout.Parent = activeEffectsContainer
-activeEffectsLayout.FillDirection = Enum.FillDirection.Vertical
-activeEffectsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-activeEffectsLayout.Padding = UDim.new(0, 5)
-activeEffectsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Table to keep track of active power-up labels
-local activePowerUpLabels = {}
-
 -- Debug logging function
 local function logDebug(...)
     if GameConfig and GameConfig.LOG_LEVEL == "debug" then
@@ -134,16 +108,6 @@ purchaseFeedbackEvent.OnClientEvent:Connect(function(message)
     end
 end)
 
-
-local function clearActiveEffectsDisplay()
-    for _, label in pairs(activePowerUpLabels) do
-        if label and label.Parent then
-            label:Destroy()
-        end
-    end
-    activePowerUpLabels = {}
-    activeEffectsContainer.Size = ACTIVE_EFFECTS_SIZE
-end
 
 -- Utility: Connect a button by name in MainUI to a handler, managing connection lifecycle
 local buttonConnections = {}
@@ -254,11 +218,9 @@ end
 
 -- Hook into player death to clear timers and effects
 player.CharacterAdded:Connect(function(character)
-    clearActiveEffectsDisplay()
     disconnectAllMainUIButtons()
     local humanoid = character:WaitForChild("Humanoid")
     humanoid.Died:Connect(function()
-        clearActiveEffectsDisplay()
         disconnectAllMainUIButtons()
         clearAllPowerUpTimers()
     end)
