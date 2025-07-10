@@ -10,11 +10,11 @@ local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild
 local ACTIVE_EFFECTS_POSITION = UDim2.new(0, 10, 0, 70) -- Position of active effects display
 local ACTIVE_EFFECTS_SIZE = UDim2.new(0, 200, 0, 0) -- Size of active effects container
 
-
+-- Use :WaitForChild() for all remote events
 local shopEvent = ReplicatedStorage:WaitForChild("PowerUpShopEvent")
-local purchaseFeedbackEvent = ReplicatedStorage:WaitForChild("PurchaseFeedbackEvent") -- New: Get feedback event
-local PowerUpActiveEvent = ReplicatedStorage:WaitForChild("PowerUpActiveEvent") -- New: Get active power-up event
-local PowerUpEndedEvent = ReplicatedStorage:WaitForChild("PowerUpEndedEvent") -- New: Get power-up ended event
+local purchaseFeedbackEvent = ReplicatedStorage:WaitForChild("PurchaseFeedbackEvent")
+local PowerUpActiveEvent = ReplicatedStorage:WaitForChild("PowerUpActiveEvent")
+local PowerUpEndedEvent = ReplicatedStorage:WaitForChild("PowerUpEndedEvent")
 
 
 -- Debug logging function
@@ -140,6 +140,8 @@ local function disconnectAllMainUIButtons()
 end
 
 local function setupMainUIButtons()
+    local playerGui = player:WaitForChild("PlayerGui")
+    local mainUI = playerGui:FindFirstChild("MainUI") -- Ensure MainUI exists before proceeding
     for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
         local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
         connectMainUIButton(buttonName, function()
@@ -155,6 +157,18 @@ local function setupMainUIButtons()
             end
         end)
     end
+end
+
+-- Call setupMainUIButtons only after MainUI is present
+local playerGui = player:WaitForChild("PlayerGui")
+if playerGui:FindFirstChild("MainUI") then
+    setupMainUIButtons()
+else
+    playerGui.ChildAdded:Connect(function(child)
+        if child.Name == "MainUI" then
+            setupMainUIButtons()
+        end
+    end)
 end
 
 local function clearAllPowerUpTimers()

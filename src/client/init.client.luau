@@ -58,8 +58,7 @@ local function showRespawnTimer()
                     respawnConnection = nil
                 end
                 -- Request respawn
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local requestRespawnEvent = ReplicatedStorage:FindFirstChild("RequestRespawnEvent")
+                local requestRespawnEvent = ReplicatedStorage:WaitForChild("RequestRespawnEvent")
                 if requestRespawnEvent then
                     requestRespawnEvent:FireServer()
                 else
@@ -121,15 +120,15 @@ local function createBeeCountDisplayGui()
 end
 
 -- Only create if not already present
-if not player.PlayerGui:FindFirstChild("BeeCountDisplayGui") then
+if not player:WaitForChild("PlayerGui"):FindFirstChild("BeeCountDisplayGui") then
     createBeeCountDisplayGui()
 end
 
 player.CharacterAdded:Connect(function()
-    local beeGui = player.PlayerGui:FindFirstChild("BeeCountDisplayGui")
+    local beeGui = player:WaitForChild("PlayerGui"):FindFirstChild("BeeCountDisplayGui")
     if not beeGui then
         createBeeCountDisplayGui()
     else
-        beeGui.Parent = player.PlayerGui
+        beeGui.Parent = player:WaitForChild("PlayerGui")
     end
 end)
