@@ -9,104 +9,13 @@ local ServerStorage = game:GetService("ServerStorage") -- Get ServerStorage
 -- Require GameConfig for constants
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
--- Server-specific constants
-local DEFAULT_SPAWN_POSITION = Vector3.new(0, 5, 0)
+-- Require PlayerDataManager module
+local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
+
+-- Initialize PlayerDataManager
+PlayerDataManager.initialize()
 
 
--- Initialize player stats when they join
-local function initializePlayerStats(player)
-    -- debugPrint("Initializing stats for player: ", player.Name)
-    
-    -- Create leaderstats folder if it doesn't exist
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if not leaderstats then
-        leaderstats = Instance.new("Folder")
-        leaderstats.Name = "leaderstats"
-        leaderstats.Parent = player
-        -- debugPrint("Created leaderstats folder for ", player.Name)
-    end
-    
-    -- Create HoneyDrips stat if it doesn't exist
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-    if not honeyDrips then
-        honeyDrips = Instance.new("IntValue")
-        honeyDrips.Name = "HoneyDrips"
-        honeyDrips.Value = 0
-        honeyDrips.Parent = leaderstats
-        -- debugPrint("Created HoneyDrips stat for ", player.Name)
-    end
-    return leaderstats
-end
-
-local function setDebugHoneyDrips(player)
-    local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats")
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips") or leaderstats:WaitForChild("HoneyDrips")
-    honeyDrips.Value = GameConfig.DEBUG_HONEY_DRIPS_VALUE
-end
-
--- Connect player joining
-game.Players.PlayerAdded:Connect(function(player)
-    -- debugPrint("Player joined: ", player.Name)
-    initializePlayerStats(player)
-    if GameConfig.DEBUG then
-        setDebugHoneyDrips(player)
-    end
-end)
-
--- Helper functions for HoneyDrips
-local function getPlayerHoneyDrips(player)
-    -- print("debugPrint status: ", typeof(debugPrint))
-    -- if debugPrint then debugPrint("getPlayerHoneyDrips called for ", player.Name) end
-    local leaderstats = player:WaitForChild("leaderstats")
-    -- Ensure leaderstats is not nil before attempting to access .Name
-    if leaderstats then
-        -- print("debugPrint status: ", typeof(debugPrint))
-        -- if debugPrint then debugPrint("getPlayerHoneyDrips: leaderstats found for ", player.Name, ": ", (leaderstats and leaderstats.Name or "nil"), ", Type: ", typeof(leaderstats)) end
-    else
-        warn("getPlayerHoneyDrips: CRITICAL - leaderstats still nil after initialization for player: ", player.Name)
-        return 0 -- Prevent further errors by returning a default value
-    end
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-    if not honeyDrips then
-        warn("getPlayerHoneyDrips: HoneyDrips not found for player: ", player.Name)
-        honeyDrips = Instance.new("IntValue")
-        honeyDrips.Name = "HoneyDrips"
-        honeyDrips.Value = 0
-        honeyDrips.Parent = leaderstats
-        -- print("debugPrint status: ", typeof(debugPrint))
-        -- if debugPrint then debugPrint("Created HoneyDrips stat for ", player.Name) end
-    end
-    -- print("debugPrint status: ", typeof(debugPrint))
-    -- if debugPrint then debugPrint("getPlayerHoneyDrips: honeyDrips found: ", tostring(honeyDrips), ", Type: ", typeof(honeyDrips)) end
-    return honeyDrips.Value
-end
-
-local function updatePlayerHoneyDrips(player, newAmount)
-    -- print("debugPrint status: ", typeof(debugPrint))
-    -- if debugPrint then debugPrint("updatePlayerHoneyDrips called for ", player.Name, ", newAmount: ", newAmount) end
-    local leaderstats = player:WaitForChild("leaderstats")
-    -- Ensure leaderstats is not nil before attempting to access .Name
-    if leaderstats then
-        -- print("debugPrint status: ", typeof(debugPrint))
-        -- if debugPrint then debugPrint("updatePlayerHoneyDrips: leaderstats found for ", player.Name, ": ", (leaderstats and leaderstats.Name or "nil"), ", Type: ", typeof(leaderstats)) end
-    else
-        warn("updatePlayerHoneyDrips: CRITICAL - leaderstats still nil after initialization for player: ", player.Name)
-        return -- Cannot proceed without leaderstats
-    end
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-    if not honeyDrips then
-        -- Create HoneyDrips stat if it doesn't exist
-        honeyDrips = Instance.new("IntValue")
-        honeyDrips.Name = "HoneyDrips"
-        honeyDrips.Value = 0
-        honeyDrips.Parent = leaderstats
-        -- print("debugPrint status: ", typeof(debugPrint))
-        -- if debugPrint then debugPrint("updatePlayerHoneyDrips: Created new HoneyDrips IntValue for ", player.Name) end
-    end
-    -- print("debugPrint status: ", typeof(debugPrint))
-    -- if debugPrint then debugPrint("updatePlayerHoneyDrips: Setting HoneyDrips value to ", newAmount, " for ", player.Name) end
-    honeyDrips.Value = newAmount
-end
 
 local SoundsFolder = ServerStorage:FindFirstChild("Sounds")
 if not SoundsFolder then
@@ -235,9 +144,8 @@ local function createHoneyDrip(initialPosition)
                     warn("No HoneyDrip sounds available to play!")
                 end
 
-                -- Increment player's HoneyDrips stat using helper functions
-                -- debugPrint("Calling updatePlayerHoneyDrips for ", player.Name, ". Current value: ", getPlayerHoneyDrips(player), " ...")
-                local currentHoneyDrips = getPlayerHoneyDrips(player)
+                -- Use PlayerDataManager module
+                local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
                 
                 -- Get the value from the HoneyDrip model itself
                 local honeyDripValueObject = newDrip:FindFirstChild("DripAmount") -- Now looking for "DripAmount"
@@ -249,8 +157,8 @@ local function createHoneyDrip(initialPosition)
                     warn("HoneyDrip (", newDrip.Name, ") does not have a 'DripAmount' NumberValue child or it's not a NumberValue. Defaulting to 1.")
                 end
 
-                updatePlayerHoneyDrips(player, currentHoneyDrips + amountToAdd)
-                -- debugPrint(player.Name, " collected a HoneyDrip. Total: ", getPlayerHoneyDrips(player))
+                -- Use PlayerDataManager module
+                PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips + amountToAdd)
                 
             else
                 warn("Player character or Humanoid not found for healing.")
@@ -323,7 +231,7 @@ end
 
 -- Function to create and spawn a flying bee that follows the closest player
 local function createFlyingCube(customColor)
-    -- debugPrint("Attempting to create flying bee...")
+    print("Attempting to create flying bee...")
     
     -- Get the bee model from ReplicatedStorage, as per your model's new location
     local beeModel = ReplicatedStorage:FindFirstChild("Bee")
@@ -331,6 +239,7 @@ local function createFlyingCube(customColor)
         warn("Bee model not found in ReplicatedStorage! Please add a bee model named 'Bee' to ReplicatedStorage.")
         return nil
     end
+    print("Bee model found in ReplicatedStorage")
     
     -- Clone the bee model
     local bee = beeModel:Clone()
@@ -719,126 +628,10 @@ local function createFlyingCube(customColor)
     return bee
 end
 
--- Create a folder in ReplicatedStorage for scores
-local scoresFolder = Instance.new("Folder")
-scoresFolder.Name = "PlayerScores"
-scoresFolder.Parent = ReplicatedStorage
-
--- Function to get or create a player's score value
-local function getPlayerScore(player)
-    local scoreValue = scoresFolder:FindFirstChild(player.UserId)
-    if not scoreValue then
-        scoreValue = Instance.new("IntValue")
-        scoreValue.Name = player.UserId
-        scoreValue.Value = 0
-        scoreValue.Parent = scoresFolder
-        
-        -- Create a StringValue for the leaderboard
-        local leaderboardValue = Instance.new("Folder") -- Changed from StringValue to Folder
-        leaderboardValue.Name = "leaderstats"
-        leaderboardValue.Parent = player
-        
-        local scoreStat = Instance.new("StringValue")
-        scoreStat.Name = "Survived"
-        scoreStat.Value = "0s"
-        scoreStat.Parent = leaderboardValue
-    end
-    return scoreValue
-end
-
--- Function to update player's score
-local function updatePlayerScore(player, newScore)
-    local scoreValue = getPlayerScore(player)
-    if newScore > scoreValue.Value then
-        scoreValue.Value = newScore
-        -- Update leaderboard
-        local leaderstats = player:FindFirstChild("leaderstats")
-        if leaderstats then
-            local scoreStat = leaderstats:FindFirstChild("Survived")
-            if scoreStat and scoreStat:IsA("StringValue") then
-                scoreStat.Value = tostring(newScore) .. "s"
-            end
-        end
-        -- debugPrint("New high score for", player.Name, ":", newScore)
-    end
-end
-
--- Handle player scoring
-local function onPlayerAdded(player)
-    local currentScore = 0
-    local lastUpdate = tick()
-    
-    -- Create leaderboard for new players
-    local leaderboardValue = Instance.new("Folder") -- Changed from StringValue to Folder
-    leaderboardValue.Name = "leaderstats"
-    leaderboardValue.Parent = player
-    
-    local scoreStat = Instance.new("StringValue")
-    scoreStat.Name = "Survived"
-    scoreStat.Value = "0s"
-    scoreStat.Parent = leaderboardValue
-
-    -- Create HoneyDrips stat (ensured to be created only once here)
-    local honeyDripsStat = Instance.new("IntValue")
-    honeyDripsStat.Name = "HoneyDrips"
-    honeyDripsStat.Value = 0
-    honeyDripsStat.Parent = leaderboardValue
-    
-    -- Start scoring when character is added
-    player.CharacterAdded:Connect(function(character)
-        local humanoid = character:WaitForChild("Humanoid")
-        currentScore = 0
-        lastUpdate = tick()
-        if GameConfig.DEBUG then
-            setDebugHoneyDrips(player)
-        end
-        
-        -- Set player character parts to the PlayerGroup collision group
-        for _, part in ipairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CollisionGroup = GameConfig.PLAYER_COLLISION_GROUP
-            end
-        end
-
-        -- Update score every second while alive
-        local connection
-        connection = RunService.Heartbeat:Connect(function()
-            if not character.Parent then
-                connection:Disconnect()
-                return
-            end
-            
-            local now = tick()
-            if now - lastUpdate >= GameConfig.SCORE_UPDATE_INTERVAL then
-                currentScore = currentScore + 1
-                lastUpdate = now
-                updatePlayerScore(player, currentScore)
-            end
-        end)
-        
-        -- Reset score on death
-        humanoid.Died:Connect(function()
-            if connection then
-                connection:Disconnect()
-            end
-            -- Reset HoneyDrips
-            updatePlayerHoneyDrips(player, 0)
-            -- Remove all active effects
-            humanoid.WalkSpeed = GameConfig.DEFAULT_WALK_SPEED -- default WalkSpeed
-            humanoid.MaxHealth = GameConfig.DEFAULT_MAX_HEALTH -- default MaxHealth
-            player:SetAttribute("BeeShield", false)
-            -- Optionally, fire PowerUpEndedEvent for all power-ups to the client here
-        end)
-    end)
-    
-    -- Set initial spawn position
-    player.CharacterAdded:Connect(function(character)
-        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-        humanoidRootPart.CFrame = CFrame.new(DEFAULT_SPAWN_POSITION)
-    end)
-end
-
-Players.PlayerAdded:Connect(onPlayerAdded)
+-- Connect player events using PlayerDataManager
+Players.PlayerAdded:Connect(function(player)
+    PlayerDataManager.onPlayerAdded(player, GameConfig.DEFAULT_SPAWN_POSITION)
+end)
 
 -- Add RemoteEvent for spawning cubes from client
 local spawnCubeEvent = Instance.new("RemoteEvent")
@@ -853,7 +646,12 @@ end)
 
 -- Spawn the first cube when the game starts
 print("Starting flying cube spawn...")
-createFlyingCube()
+local firstBee = createFlyingCube()
+if firstBee then
+    print("First bee created successfully")
+else
+    warn("Failed to create first bee!")
+end
 updateBeeCount() -- Update count immediately after initial spawn
 
 -- Function to get minimum required bees
@@ -893,6 +691,7 @@ end
 -- Start the auto spawner only after a short delay to ensure Players service is ready
 print("Starting auto spawner...")
 task.delay(1, function()
+    print("Starting auto spawner task...")
     task.spawn(startAutoSpawner)
     print("Auto spawner started")
 end)

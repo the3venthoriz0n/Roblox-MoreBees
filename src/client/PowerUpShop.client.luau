@@ -45,19 +45,7 @@ activeEffectsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 -- Table to keep track of active power-up labels
 local activePowerUpLabels = {}
 
--- Function to update a power-up's countdown
-local function updatePowerUpCountdown(powerUpName, label, remainingTime)
-    if label and label.Parent then
-        label.Text = powerUpName .. ": " .. math.max(0, math.ceil(remainingTime)) .. "s"
-        if remainingTime <= 0 then
-            label:Destroy()
-            activePowerUpLabels[powerUpName] = nil
-        end
-    else
-        -- Label might have been destroyed by PowerUpEndedEvent
-        activePowerUpLabels[powerUpName] = nil
-    end
-end
+
 
 -- Listen for PowerUpActiveEvent from server
 PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)

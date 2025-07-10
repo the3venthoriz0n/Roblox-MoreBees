@@ -4,8 +4,9 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Require modules
 local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
-local PowerUpEffects = require(script.Parent.PowerUpEffects)
+local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 
 local function logDebug(...)
     if GameConfig.LOG_LEVEL == "debug" then
@@ -19,7 +20,6 @@ local POWER_UPS = {}
 for i, data in ipairs(ShopConfig.POWER_UPS_DATA) do
     POWER_UPS[i] = table.clone(data) -- Copy shared data including Duration
 end
-
 
 -- Create RemoteEvent for shop interactions
 local shopEvent = Instance.new("RemoteEvent")
@@ -45,7 +45,6 @@ if not PowerUpEndedEvent then
     PowerUpEndedEvent = event
 end
 
-
 -- Add server-side effects to the copied power-up data
 POWER_UPS[1].Effect = function(character)
     PowerUpEffects.SpeedBoost(character, POWER_UPS[1].Duration)
@@ -63,34 +62,7 @@ POWER_UPS[4].Effect = function(character)
     PowerUpEffects.SpawnBees(character, POWER_UPS[4].Duration)
 end
 
-
-
--- Function to get player's HoneyDrip count
-local function getPlayerHoneyDrips(player)
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if leaderstats then
-        local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-        return honeyDrips and honeyDrips.Value or 0
-    end
-    return 0
-end
-
--- Function to update player's HoneyDrip count
-local function updatePlayerHoneyDrips(player, newAmount)
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if leaderstats then
-        local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-        if not honeyDrips then
-            honeyDrips = Instance.new("IntValue")
-            honeyDrips.Name = "HoneyDrips"
-            honeyDrips.Parent = leaderstats
-        end
-        honeyDrips.Value = newAmount
-    end
-end
-
 -- Handle shop purchases (HoneyDrips)
-
 shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
     logDebug("shopEvent.OnServerEvent called for player:", player and player.Name or tostring(player), "powerUpIndex:", powerUpIndex)
     local character = player.Character
@@ -99,11 +71,11 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
     local powerUp = POWER_UPS[powerUpIndex]
     if not powerUp then return end
 
-    local currentHoneyDrips = getPlayerHoneyDrips(player)
+    local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
     logDebug("Player", player.Name, "has", currentHoneyDrips, "HoneyDrips. PowerUp cost:", powerUp.Cost)
     if currentHoneyDrips >= powerUp.Cost then
         -- Deduct HoneyDrips
-        updatePlayerHoneyDrips(player, currentHoneyDrips - powerUp.Cost)
+        PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips - powerUp.Cost)
         
         -- Apply power-up effect
         logDebug("Applying effect for powerUp:", powerUp.Name)
@@ -120,7 +92,6 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
             logDebug("Firing PowerUpActiveEvent for", player.Name, powerUp.Name, powerUp.Duration)
             PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
         end
-
     else
         -- Notify player (server log)
         print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
@@ -175,5 +146,3 @@ toggleShopEvent.OnServerEvent:Connect(function(player)
     toggleShopEvent:FireClient(player)
     print("Server fired ToggleShopEvent back to client for player: ", player.Name)
 end) 
-
--- Removed any code that connects to CharacterAdded or UI button events. All UI logic should be in the client script. 

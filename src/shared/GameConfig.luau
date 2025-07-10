@@ -12,6 +12,7 @@ GameConfig.DEBUG_HONEY_DRIPS_VALUE = 100
 -- ============================================================================
 GameConfig.DEFAULT_WALK_SPEED = 16
 GameConfig.DEFAULT_MAX_HEALTH = 100
+GameConfig.DEFAULT_SPAWN_POSITION = Vector3.new(0, 5, 0)
 
 -- ============================================================================
 -- BEE SPAWNING SETTINGS
