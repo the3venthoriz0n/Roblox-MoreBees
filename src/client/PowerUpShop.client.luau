@@ -4,6 +4,7 @@ local player = Players.LocalPlayer
 
 -- Require the shared configurations
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
 
 -- Client-specific UI constants
 local ACTIVE_EFFECTS_POSITION = UDim2.new(0, 10, 0, 70) -- Position of active effects display
@@ -144,11 +145,13 @@ local function connectMainUIButton(buttonName, handler)
         local mainUI = playerGui:FindFirstChild("MainUI")
         local button = mainUI and mainUI:FindFirstChild(buttonName)
         if button then
+            -- Always disconnect previous connection for this button
             if buttonConnections[buttonName] then
                 buttonConnections[buttonName]:Disconnect()
             end
+            -- Connect the new handler
             buttonConnections[buttonName] = button.MouseButton1Click:Connect(handler)
-            logDebug(buttonName .. " button connected!")
+            logDebug(buttonName .. " button connected! (instance: " .. tostring(button) .. ")")
         else
             logDebug(buttonName .. " button not found, retrying...")
             task.delay(0.2, tryConnect)
@@ -164,6 +167,25 @@ local function disconnectAllMainUIButtons()
     end
 end
 
+local function setupMainUIButtons()
+    for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
+        local buttonName = powerUp.Name:gsub(" ", "") -- Remove spaces for button object names
+        logDebug("Attempting to connect button: " .. buttonName)
+        connectMainUIButton(buttonName, function()
+            if powerUp.ProductId and powerUp.RobuxCost then
+                logDebug(buttonName .. " button clicked, prompting Robux purchase.")
+                local MarketplaceService = game:GetService("MarketplaceService")
+                MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
+            elseif powerUp.Cost then
+                logDebug(buttonName .. " button clicked, firing shopEvent to server.")
+                shopEvent:FireServer(i)
+            else
+                logDebug(buttonName .. " button clicked, but no purchase method defined in ShopConfig.")
+            end
+        end)
+    end
+end
+
 player.CharacterAdded:Connect(function(character)
     clearActiveEffectsDisplay()
     disconnectAllMainUIButtons()
@@ -173,16 +195,9 @@ player.CharacterAdded:Connect(function(character)
         disconnectAllMainUIButtons()
     end)
     task.wait(0.1)
-    connectMainUIButton("SpeedBoost", function()
-        logDebug("Speed boost button clicked, firing shopEvent to server.")
-        shopEvent:FireServer(1)
-    end)
-    -- Add more button connections here as needed
+    setupMainUIButtons()
 end)
 
 if player.Character then
-    connectMainUIButton("SpeedBoost", function()
-        logDebug("Speed boost button clicked, firing shopEvent to server.")
-        shopEvent:FireServer(1)
-    end)
+    setupMainUIButtons()
 end 

@@ -5,8 +5,8 @@ ShopConfig.POWER_UPS_DATA = {
         Name = "Speed Boost",
         Description = "Increases your movement speed by 50% for 30 seconds",
         Cost = 2,
-        RobuxCost = 5,
-        ProductId = 3307385345,
+        -- RobuxCost = 5,
+        -- ProductId = 3307385345,
         Duration = 30,
     },
     {
@@ -32,6 +32,12 @@ ShopConfig.POWER_UPS_DATA = {
         RobuxCost = 25, -- 10 Robux
         ProductId = 3307385346, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 0, -- Instant effect
+    },
+    {
+        Name = "Honey Drip",
+        Description = "Purchase a Honey Drip with Robux",
+        RobuxCost = 1,
+        ProductId = 3307384691,
     }
 }
 

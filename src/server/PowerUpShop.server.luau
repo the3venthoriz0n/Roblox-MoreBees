@@ -102,15 +102,17 @@ local function processRobuxReceipt(receiptInfo)
     -- Find the power-up associated with the product ID
     for _, powerUp in ipairs(POWER_UPS) do
         if powerUp.ProductId == receiptInfo.ProductId then
-            -- Apply power-up effect
-            powerUp.Effect(character)
-            print(player.Name .. " successfully purchased " .. powerUp.Name .. " with Robux!")
-            
-            -- Signal power-up active to client
-            if powerUp.Duration > 0 then
-                RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
+            -- Apply power-up effect if defined
+            if powerUp.Effect then
+                powerUp.Effect(character)
+                print(player.Name .. " successfully purchased " .. (powerUp.Name or "Unknown PowerUp") .. " with Robux!")
+            else
+                warn("No Effect defined for power-up with ProductId:", powerUp.ProductId)
             end
-
+            -- Signal power-up active to client if Duration is defined and > 0
+            if powerUp.Duration and powerUp.Duration > 0 then
+                RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name or "Unknown PowerUp", powerUp.Duration)
+            end
             return Enum.ProductPurchaseDecision.PurchaseGranted
         end
     end

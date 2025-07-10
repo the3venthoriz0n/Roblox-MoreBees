@@ -23,6 +23,7 @@ local function logDebug(...)
 end
 
 -- Run unit tests (controlled by GameConfig.RUN_TESTS)
+print("DEBUG: GameConfig.RUN_TESTS =", GameConfig.RUN_TESTS)
 if GameConfig.RUN_TESTS then
     local RemoteEventsManagerTests = require(game.ServerScriptService.Server.tests.RemoteEventsManagerTests)
     local GameConfigTests = require(game.ServerScriptService.Server.tests.GameConfigTests)

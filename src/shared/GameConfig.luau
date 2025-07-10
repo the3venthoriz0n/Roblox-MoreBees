@@ -6,7 +6,7 @@ local GameConfig = {}
 GameConfig.DEBUG = true
 GameConfig.LOG_LEVEL = "debug" -- "debug", "info", "warn", "error"
 GameConfig.DEBUG_HONEY_DRIPS_VALUE = 100
-GameConfig.RUN_TESTS = true -- Set to false to disable unit tests in production
+GameConfig.RUN_TESTS = false -- Set to false to disable unit tests in production
 
 -- ============================================================================
 -- PLAYER SETTINGS
