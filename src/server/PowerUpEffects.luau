@@ -6,7 +6,7 @@ local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 local PowerUpEffects = {}
-local activeEffects = {} -- [player][effectName] = {endTime = number, running = bool}
+local activeEffects = {} -- [player][effectName] = {endTime = number, ...}
 
 local function getPlayer(character)
     return Players:GetPlayerFromCharacter(character)
@@ -16,45 +16,79 @@ local function startOrExtendEffect(player, effectName, duration, onStart, onEnd)
     activeEffects[player] = activeEffects[player] or {}
     local now = os.clock()
     local effect = activeEffects[player][effectName]
-    if effect and effect.endTime and effect.endTime > now then
-        effect.endTime = effect.endTime + duration
+
+    if effect then
+        -- Extend effect time
+        effect.endTime = math.max(effect.endTime, now) + duration
     else
-        effect = {endTime = now + duration, running = false}
+        -- First-time application
+        effect = {endTime = now + duration}
         activeEffects[player][effectName] = effect
     end
-    if not effect.running then
-        effect.running = true
-        if onStart then onStart() end
+
+    -- Always run onStart in case it needs to re-apply
+    if onStart then onStart(effect) end
+
+    -- Start effect timer only once
+    if not effect._timerRunning then
+        effect._timerRunning = true
         coroutine.wrap(function()
             while os.clock() < effect.endTime do
                 task.wait(0.2)
             end
-            -- End effect
-            if onEnd then onEnd() end
+            if onEnd then onEnd(effect) end
             RemoteEventsManager.firePowerUpEnded(player.Character, effectName)
             activeEffects[player][effectName] = nil
         end)()
     end
 end
 
--- Speed Boost Effect
 function PowerUpEffects.SpeedBoost(character, duration)
     local humanoid = character:FindFirstChild("Humanoid")
     local player = getPlayer(character)
     if humanoid and player then
         startOrExtendEffect(player, "Speed Boost", duration,
-            function()
-                local effect = activeEffects[player]["Speed Boost"]
+            function(effect)
                 if not effect.originalSpeed then
                     effect.originalSpeed = humanoid.WalkSpeed
+                    effect.stackCount = 0
                 end
-                humanoid.WalkSpeed = effect.originalSpeed * GameConfig.SPEED_BOOST_MULTIPLIER
+
+                -- Stack another boost
+                effect.stackCount = effect.stackCount + 1
+
+                -- Apply new speed
+                local multiplier = GameConfig.SPEED_BOOST_MULTIPLIER ^ effect.stackCount
+                humanoid.WalkSpeed = effect.originalSpeed * multiplier
             end,
-            function()
-                local effect = activeEffects[player] and activeEffects[player]["Speed Boost"]
+            function(effect)
+                -- Reset back to original speed
+                if effect.originalSpeed then
+                    humanoid.WalkSpeed = effect.originalSpeed
+                end
+            end
+        )
+    end
+end
+
+
+function PowerUpEffects.HealthBoost(character, duration)
+    local humanoid = character:FindFirstChild("Humanoid")
+    local player = getPlayer(character)
+    if humanoid and player then
+        startOrExtendEffect(player, "Health Boost", duration,
+            function(effect)
+                if not effect.originalMaxHealth then
+                    effect.originalMaxHealth = humanoid.MaxHealth
+                end
+                humanoid.MaxHealth = effect.originalMaxHealth + GameConfig.HEALTH_BOOST_AMOUNT
+                humanoid.Health = humanoid.Health + GameConfig.HEALTH_BOOST_AMOUNT
+            end,
+            function(effect)
                 if humanoid and humanoid.Parent then
-                    if effect and effect.originalSpeed then
-                        humanoid.WalkSpeed = effect.originalSpeed
+                    if effect.originalMaxHealth then
+                        humanoid.MaxHealth = effect.originalMaxHealth
+                        humanoid.Health = math.min(humanoid.Health, effect.originalMaxHealth)
                     end
                 end
             end
@@ -62,42 +96,21 @@ function PowerUpEffects.SpeedBoost(character, duration)
     end
 end
 
--- Health Boost Effect
-function PowerUpEffects.HealthBoost(character, duration)
-    local humanoid = character:FindFirstChild("Humanoid")
-    local player = getPlayer(character)
-    if humanoid and player then
-        local originalMaxHealth = humanoid.MaxHealth
-        startOrExtendEffect(player, "Health Boost", duration,
-            function()
-                humanoid.MaxHealth = originalMaxHealth + GameConfig.HEALTH_BOOST_AMOUNT
-                humanoid.Health = humanoid.Health + GameConfig.HEALTH_BOOST_AMOUNT
-            end,
-            function()
-                if humanoid and humanoid.Parent then
-                    humanoid.MaxHealth = originalMaxHealth
-                    humanoid.Health = math.min(humanoid.Health, originalMaxHealth)
-                end
-            end
-        )
-    end
-end
 
--- Bee Shield Effect
+-- Bee Shield Effect (unchanged)
 function PowerUpEffects.BeeShield(character, duration)
     local player = getPlayer(character)
     if player then
         startOrExtendEffect(player, "Bee Shield", duration,
-            function()
+            function(effect)
                 player:SetAttribute("BeeShield", true)
-                -- Create a ForceField for the duration
                 if not character:FindFirstChildOfClass("ForceField") then
                     local forceField = Instance.new("ForceField")
                     forceField.Visible = true
                     forceField.Parent = character
                 end
             end,
-            function()
+            function(effect)
                 player:SetAttribute("BeeShield", false)
                 local forceField = character:FindFirstChildOfClass("ForceField")
                 if forceField then

@@ -48,7 +48,7 @@ if POWER_UPS[5] then
 end
 
 -- Handle shop purchases (HoneyDrips)
-RemoteEventsManager.connectToEvent("PowerUpShop", function(player, powerUpIndex)
+RemoteEventsManager.connectToEvent("PowerUpShopEvent", function(player, powerUpIndex)
     logDebug("shopEvent.OnServerEvent called for player:", player and player.Name or tostring(player), "powerUpIndex:", powerUpIndex)
     local character = player.Character
     if not character then
