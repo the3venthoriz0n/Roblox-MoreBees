@@ -12,8 +12,21 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 -- Require PlayerDataManager module
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 
+-- Require RemoteEventsManager module
+local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
+
 -- Initialize PlayerDataManager
 PlayerDataManager.initialize()
+
+-- Create all remote events
+RemoteEventsManager.createRemoteEvents()
+
+-- Run unit tests (optional - remove in production)
+local RemoteEventsManagerTests = require(game.ServerScriptService.Server.RemoteEventsManagerTests)
+local GameConfigTests = require(game.ServerScriptService.Server.GameConfigTests)
+
+RemoteEventsManagerTests.runTests()
+GameConfigTests.runTests()
 
 
 
@@ -633,13 +646,8 @@ Players.PlayerAdded:Connect(function(player)
     PlayerDataManager.onPlayerAdded(player, GameConfig.DEFAULT_SPAWN_POSITION)
 end)
 
--- Add RemoteEvent for spawning cubes from client
-local spawnCubeEvent = Instance.new("RemoteEvent")
-spawnCubeEvent.Name = "SpawnCube"
-spawnCubeEvent.Parent = ReplicatedStorage
-
 -- Listen for spawn requests from client
-spawnCubeEvent.OnServerEvent:Connect(function(player)
+RemoteEventsManager.connectToEvent("SpawnCube", function(player)
     createFlyingCube()
     updateBeeCount() -- Update count immediately after manual spawn
 end)
@@ -724,12 +732,8 @@ end
 SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
 SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
 
--- Add RemoteEvent for client respawn requests
-local requestRespawnEvent = Instance.new("RemoteEvent")
-requestRespawnEvent.Name = "RequestRespawnEvent"
-requestRespawnEvent.Parent = ReplicatedStorage
-
-requestRespawnEvent.OnServerEvent:Connect(function(player)
+-- Handle client respawn requests
+RemoteEventsManager.connectToEvent("RequestRespawn", function(player)
     if player and player:IsA("Player") then
         player:LoadCharacter()
     end

@@ -7,6 +7,7 @@ local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
+local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 
 local function logDebug(...)
     if GameConfig.LOG_LEVEL == "debug" then
@@ -21,29 +22,11 @@ for i, data in ipairs(ShopConfig.POWER_UPS_DATA) do
     POWER_UPS[i] = table.clone(data) -- Copy shared data including Duration
 end
 
--- Create RemoteEvent for shop interactions
-local shopEvent = Instance.new("RemoteEvent")
-shopEvent.Name = "PowerUpShopEvent"
-shopEvent.Parent = ReplicatedStorage
-
--- New RemoteEvent for purchase feedback
-local purchaseFeedbackEvent = Instance.new("RemoteEvent")
-purchaseFeedbackEvent.Name = "PurchaseFeedbackEvent"
-purchaseFeedbackEvent.Parent = ReplicatedStorage
-
--- New RemoteEvent for signaling active power-ups to the client
-local PowerUpActiveEvent = Instance.new("RemoteEvent")
-PowerUpActiveEvent.Name = "PowerUpActiveEvent"
-PowerUpActiveEvent.Parent = ReplicatedStorage
-
--- New RemoteEvent for signaling power-up end to the client
-local PowerUpEndedEvent = ReplicatedStorage:FindFirstChild("PowerUpEndedEvent")
-if not PowerUpEndedEvent then
-    local event = Instance.new("RemoteEvent")
-    event.Name = "PowerUpEndedEvent"
-    event.Parent = ReplicatedStorage
-    PowerUpEndedEvent = event
-end
+-- Get remote events from RemoteEventsManager
+local shopEvent = RemoteEventsManager.getRemoteEvent("PowerUpShop")
+local purchaseFeedbackEvent = RemoteEventsManager.getRemoteEvent("PurchaseFeedback")
+local PowerUpActiveEvent = RemoteEventsManager.getRemoteEvent("PowerUpActive")
+local PowerUpEndedEvent = RemoteEventsManager.getRemoteEvent("PowerUpEnded")
 
 -- Add server-side effects to the copied power-up data
 POWER_UPS[1].Effect = function(character)
@@ -63,7 +46,7 @@ POWER_UPS[4].Effect = function(character)
 end
 
 -- Handle shop purchases (HoneyDrips)
-shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
+RemoteEventsManager.connectToEvent("PowerUpShop", function(player, powerUpIndex)
     logDebug("shopEvent.OnServerEvent called for player:", player and player.Name or tostring(player), "powerUpIndex:", powerUpIndex)
     local character = player.Character
     if not character then return end
@@ -85,19 +68,19 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
         print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
 
         -- Send success feedback to client
-        purchaseFeedbackEvent:FireClient(player, "Purchased " .. powerUp.Name .. "!")
+        RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Purchased " .. powerUp.Name .. "!")
 
         -- Signal power-up active to client
         if powerUp.Duration > 0 then
             logDebug("Firing PowerUpActiveEvent for", player.Name, powerUp.Name, powerUp.Duration)
-            PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
+            RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
         end
     else
         -- Notify player (server log)
         print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
         
         -- Send insufficient funds feedback to client
-        purchaseFeedbackEvent:FireClient(player, "Not enough HoneyDrips!")
+        RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Not enough HoneyDrips!")
     end
 end)
 
@@ -122,7 +105,7 @@ local function processRobuxReceipt(receiptInfo)
             
             -- Signal power-up active to client
             if powerUp.Duration > 0 then
-                PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
+                RemoteEventsManager.fireToClient("PowerUpActive", player, powerUp.Name, powerUp.Duration)
             end
 
             return Enum.ProductPurchaseDecision.PurchaseGranted
@@ -134,15 +117,13 @@ end
 
 MarketplaceService.ProcessReceipt = processRobuxReceipt
 
--- Create RemoteEvent for toggling shop visibility
-local toggleShopEvent = Instance.new("RemoteEvent")
-toggleShopEvent.Name = "ToggleShopEvent"
-toggleShopEvent.Parent = ReplicatedStorage
+-- Get toggle shop event from RemoteEventsManager
+local toggleShopEvent = RemoteEventsManager.getRemoteEvent("ToggleShop")
 
 -- Handle shop visibility toggle
-toggleShopEvent.OnServerEvent:Connect(function(player)
+RemoteEventsManager.connectToEvent("ToggleShop", function(player)
     print("ToggleShopEvent received on server for player: ", player.Name)
     -- Instead of trying to find the GUI on the server, fire the event back to the client
-    toggleShopEvent:FireClient(player)
+    RemoteEventsManager.fireToClient("ToggleShop", player)
     print("Server fired ToggleShopEvent back to client for player: ", player.Name)
-end) 
+end)
