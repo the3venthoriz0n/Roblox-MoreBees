@@ -398,28 +398,54 @@ local function setupGlobalTooltip()
         local globalTooltip = mainUI:FindFirstChild("GlobalToolTip")
         if not globalTooltip then return end
 
+        -- Tooltip delay tracking
+        local tooltipDelays = {}
+        local tooltipDelay = GameConfig and GameConfig.TOOLTIP_DELAY or 0.5 -- Default to 0.5 seconds
+
         for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
             local buttonName = powerUp.Name:gsub(" ", "")
             if buttonName then
                 local button = mainUI:FindFirstChild(buttonName)
                 if button then
                     local desc = powerUp.Description or ""
+                    
                     local function show()
-                        if globalTooltip and globalTooltip.Parent then
-                            globalTooltip.Text = desc
-                            globalTooltip.Visible = true
-                            -- Center of the screen
-                            local camera = workspace.CurrentCamera
-                            if camera then
-                                local viewportSize = camera.ViewportSize
-                                globalTooltip.Position = UDim2.new(
-                                    0, (viewportSize.X - globalTooltip.AbsoluteSize.X) / 2,
-                                    0, (viewportSize.Y - globalTooltip.AbsoluteSize.Y) / 2
-                                )
-                            end
+                        -- Cancel any existing delay for this button
+                        if tooltipDelays[button] then
+                            tooltipDelays[button] = false
                         end
+                        
+                        -- Set up delayed tooltip display
+                        local shouldShow = true
+                        tooltipDelays[button] = shouldShow
+                        
+                        task.delay(tooltipDelay, function()
+                            -- Only show if the delay hasn't been cancelled
+                            if tooltipDelays[button] == shouldShow then
+                                if globalTooltip and globalTooltip.Parent then
+                                    globalTooltip.Text = desc
+                                    globalTooltip.Visible = true
+                                    -- Center of the screen
+                                    local camera = workspace.CurrentCamera
+                                    if camera then
+                                        local viewportSize = camera.ViewportSize
+                                        globalTooltip.Position = UDim2.new(
+                                            0, (viewportSize.X - globalTooltip.AbsoluteSize.X) / 2,
+                                            0, (viewportSize.Y - globalTooltip.AbsoluteSize.Y) / 2
+                                        )
+                                    end
+                                end
+                            end
+                        end)
                     end
+                    
                     local function hide()
+                        -- Cancel the delayed tooltip if it hasn't shown yet
+                        if tooltipDelays[button] then
+                            tooltipDelays[button] = false
+                        end
+                        
+                        -- Hide tooltip immediately
                         if globalTooltip and globalTooltip.Parent then
                             globalTooltip.Visible = false
                         end
