@@ -11,6 +11,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 
+
 -- Initialize 
 PlayerDataManager.initialize()
 RemoteEventsManager.createRemoteEvents()

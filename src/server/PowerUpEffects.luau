@@ -8,14 +8,6 @@ local PowerUpEndedEvent = RemoteEventsManager.getRemoteEvent("PowerUpEnded")
 
 local PowerUpEffects = {}
 
--- Helper function to fire power-up ended events
-local function firePowerUpEndedEvent(character, powerUpName)
-    local player = Players:GetPlayerFromCharacter(character)
-    if player then
-        PowerUpEndedEvent:FireClient(player, powerUpName)
-    end
-end
-
 -- Speed Boost Effect
 function PowerUpEffects.SpeedBoost(character, duration)
     local humanoid = character:FindFirstChild("Humanoid")
@@ -26,7 +18,7 @@ function PowerUpEffects.SpeedBoost(character, duration)
             if humanoid and humanoid.Parent then
                 humanoid.WalkSpeed = originalSpeed
             end
-            firePowerUpEndedEvent(character, "Speed Boost")
+            RemoteEventsManager.firePowerUpEnded(character, "Speed Boost")
         end)
     end
 end
@@ -43,7 +35,7 @@ function PowerUpEffects.HealthBoost(character, duration)
                 humanoid.MaxHealth = originalMaxHealth
                 humanoid.Health = math.min(humanoid.Health, originalMaxHealth)
             end
-            firePowerUpEndedEvent(character, "Health Boost")
+            RemoteEventsManager.firePowerUpEnded(character, "Health Boost")
         end)
     end
 end
@@ -57,7 +49,7 @@ function PowerUpEffects.BeeShield(character, duration)
             if player then
                 player:SetAttribute("BeeShield", false)
             end
-            firePowerUpEndedEvent(character, "Bee Shield")
+            RemoteEventsManager.firePowerUpEnded(character, "Bee Shield")
         end)
     end
 end

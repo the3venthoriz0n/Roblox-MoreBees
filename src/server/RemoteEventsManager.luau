@@ -2,9 +2,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteEventsManager = {}
 
--- Store all remote events for easy access
-local remoteEvents = {}
-
 local function logDebug(...)
     print("[DEBUG][RemoteEventsManager]", ...)
 end
@@ -26,20 +23,14 @@ function RemoteEventsManager.createRemoteEvents()
         end
     end
 
-    -- Bee spawning event
-    remoteEvents.SpawnCube = createOrGetEvent("SpawnCube")
-    -- Player respawn request event
-    remoteEvents.RequestRespawn = createOrGetEvent("RequestRespawnEvent")
-    -- Power-up shop interaction event
-    remoteEvents.PowerUpShop = createOrGetEvent("PowerUpShopEvent")
-    -- Purchase feedback event
-    remoteEvents.PurchaseFeedback = createOrGetEvent("PurchaseFeedbackEvent")
-    -- Power-up active event
-    remoteEvents.PowerUpActive = createOrGetEvent("PowerUpActiveEvent")
-    -- Power-up ended event
-    remoteEvents.PowerUpEnded = createOrGetEvent("PowerUpEndedEvent")
-    -- Shop visibility toggle event
-    remoteEvents.ToggleShop = createOrGetEvent("ToggleShopEvent")
+    createOrGetEvent("SpawnCube")
+    createOrGetEvent("RequestRespawnEvent")
+    createOrGetEvent("PowerUpShopEvent")
+    createOrGetEvent("PurchaseFeedbackEvent")
+    createOrGetEvent("PowerUpActiveEvent")
+    createOrGetEvent("PowerUpEndedEvent")
+    createOrGetEvent("ToggleShopEvent")
+    
     -- Bindable event for bee spawning
     local bindable = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
     if not bindable then
@@ -53,24 +44,19 @@ function RemoteEventsManager.createRemoteEvents()
 end
 
 -- Get a specific remote event by name
-function RemoteEventsManager.getRemoteEvent(key)
-    local event = remoteEvents[key]
+function RemoteEventsManager.getRemoteEvent(eventName)
+    local event = ReplicatedStorage:FindFirstChild(eventName)
     if event then
-        logDebug("getRemoteEvent:", key, "->", event.Name)
+        logDebug("getRemoteEvent:", eventName, "->", event.Name)
     else
-        logDebug("getRemoteEvent: No event found for key:", key)
+        logDebug("getRemoteEvent: No event found for name:", eventName)
     end
     return event
 end
 
--- Get all remote events
-function RemoteEventsManager.getAllRemoteEvents()
-    return remoteEvents
-end
-
 -- Fire a remote event to a specific client
 function RemoteEventsManager.fireToClient(eventName, player, ...)
-    local event = remoteEvents[eventName]
+    local event = ReplicatedStorage:FindFirstChild(eventName .. "Event") or ReplicatedStorage:FindFirstChild(eventName)
     if event and player then
         event:FireClient(player, ...)
     else
@@ -80,7 +66,7 @@ end
 
 -- Fire a remote event to all clients
 function RemoteEventsManager.fireToAllClients(eventName, ...)
-    local event = remoteEvents[eventName]
+    local event = ReplicatedStorage:FindFirstChild(eventName .. "Event") or ReplicatedStorage:FindFirstChild(eventName)
     if event then
         event:FireAllClients(...)
     else
@@ -90,12 +76,20 @@ end
 
 -- Connect a function to a remote event
 function RemoteEventsManager.connectToEvent(eventName, callback)
-    local event = remoteEvents[eventName]
+    local event = ReplicatedStorage:FindFirstChild(eventName .. "Event") or ReplicatedStorage:FindFirstChild(eventName)
     if event then
         return event.OnServerEvent:Connect(callback)
     else
         warn("RemoteEventsManager: Invalid event name for connectToEvent:", eventName)
         return nil
+    end
+end
+
+function RemoteEventsManager.firePowerUpEnded(character, powerUpName)
+    local Players = game:GetService("Players")
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        RemoteEventsManager.fireToClient("PowerUpEnded", player, powerUpName)
     end
 end
 

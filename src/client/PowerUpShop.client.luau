@@ -5,13 +5,12 @@ local player = Players.LocalPlayer
 -- Require the shared configurations
 local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
-local POWER_UPS = ShopConfig.POWER_UPS_DATA
 
 -- Client-specific UI constants
 local ACTIVE_EFFECTS_POSITION = UDim2.new(0, 10, 0, 70) -- Position of active effects display
 local ACTIVE_EFFECTS_SIZE = UDim2.new(0, 200, 0, 0) -- Size of active effects container
 
--- Get RemoteEvents
+
 local shopEvent = ReplicatedStorage:WaitForChild("PowerUpShopEvent")
 local toggleShopEvent = ReplicatedStorage:WaitForChild("ToggleShopEvent")
 local purchaseFeedbackEvent = ReplicatedStorage:WaitForChild("PurchaseFeedbackEvent") -- New: Get feedback event
@@ -51,6 +50,7 @@ local function logDebug(...)
         print("[DEBUG]", ...)
     end
 end
+
 
 -- Listen for PowerUpActiveEvent from server
 PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)
