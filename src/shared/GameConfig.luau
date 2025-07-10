@@ -83,6 +83,7 @@ GameConfig.PLAYER_COLLISION_GROUP = "PlayerGroup"
 GameConfig.BEE_COLLISION_GROUP = "BeeGroup"
 GameConfig.BEEHIVE_COLLISION_GROUP = "BeeHiveGroup"
 GameConfig.CUBE_COLLISION_GROUP = "FlyingGroup"
+GameConfig.TREE_COLLISION_GROUP = "TreeGroup" -- Added for tree collision group
 
 -- ============================================================================
 -- AUDIO SETTINGS

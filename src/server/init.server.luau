@@ -195,23 +195,36 @@ local function createHoneyDrip(initialPosition)
     return newDrip
 end
 
--- Set up collision rules
--- Ensure groups exist, then disable collisions between them
+-- Set up collision groups and rules
 local function setupCollisionGroups()
-    -- Register groups if they don't exist
     PhysicsService:RegisterCollisionGroup(GameConfig.BEEHIVE_COLLISION_GROUP)
     PhysicsService:RegisterCollisionGroup(GameConfig.CUBE_COLLISION_GROUP)
     PhysicsService:RegisterCollisionGroup(GameConfig.PLAYER_COLLISION_GROUP)
+    PhysicsService:RegisterCollisionGroup(GameConfig.TREE_COLLISION_GROUP)
 
-    -- Disable collisions between BeeHiveGroup and FlyingGroup
     PhysicsService:CollisionGroupSetCollidable(GameConfig.BEEHIVE_COLLISION_GROUP, GameConfig.CUBE_COLLISION_GROUP, false)
-    
-    -- Disable collisions between FlyingGroup (bees) and PlayerGroup (players)
     PhysicsService:CollisionGroupSetCollidable(GameConfig.CUBE_COLLISION_GROUP, GameConfig.PLAYER_COLLISION_GROUP, false)
+    PhysicsService:CollisionGroupSetCollidable(GameConfig.CUBE_COLLISION_GROUP, GameConfig.TREE_COLLISION_GROUP, false)
 end
 
--- Call this once at server start
+-- Recursively assign collision group to all parts in a folder
+local function assignCollisionGroupToFolder(folder, groupName)
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.CollisionGroup = groupName
+        end
+    end
+end
+
 setupCollisionGroups()
+
+local treesFolder = workspace:FindFirstChild("Trees")
+if treesFolder then
+    assignCollisionGroupToFolder(treesFolder, GameConfig.TREE_COLLISION_GROUP)
+    treesFolder.ChildAdded:Connect(function(child)
+        assignCollisionGroupToFolder(child, GameConfig.TREE_COLLISION_GROUP)
+    end)
+end
 
 print("Server script starting...")
 
