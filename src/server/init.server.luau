@@ -250,6 +250,7 @@ end
 
 -- Function to create and spawn a flying bee that follows the closest player
 local function createFlyingCube(customColor)
+    print("[DEBUG] createFlyingCube called with customColor:", customColor, "typeof:", typeof(customColor))
     -- logDebug("Attempting to create flying bee...")
     
     -- Get the bee model from ReplicatedStorage, as per your model's new location
@@ -718,25 +719,29 @@ workspace.ChildRemoved:Connect(function(child)
     end
 end)
 
--- New: BindableEvent for inter-script communication
-local SpawnBeesRequestEvent = Instance.new("BindableEvent")
-SpawnBeesRequestEvent.Name = "SpawnBeesRequestEvent"
-SpawnBeesRequestEvent.Parent = ReplicatedStorage
+-- Reference the existing SpawnBeesRequestEvent in ReplicatedStorage
+local spawnBeesRequestEvent = ReplicatedStorage:WaitForChild("SpawnBeesRequestEvent")
 
 -- Function to spawn multiple bees (called via BindableEvent)
 local function spawnMultipleBees(count, color)
+    print("[DEBUG] spawnMultipleBees called with count:", count, "color:", color, "typeof:", typeof(color))
+    -- Ensure color is a BrickColor
+    local brickColor = color
+    if typeof(color) == "string" then
+        brickColor = BrickColor.new(color)
+    elseif typeof(color) ~= "BrickColor" then
+        brickColor = BrickColor.new("Bright yellow") -- fallback
+    end
     for i = 1, count do
         task.spawn(function()
-            createFlyingCube(color)
+            createFlyingCube(brickColor)
         end)
     end
     updateBeeCount()
-    -- debugPrint("Spawned", count, "bees via request!")
 end
 
--- Connect the BindableEvent to the spawning function
-SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
-SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
+-- Connect the BindableEvent to the spawning function (only once)
+spawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
 
 -- Handle client respawn requests
 RemoteEventsManager.connectToEvent("RequestRespawn", function(player)

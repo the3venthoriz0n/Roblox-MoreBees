@@ -1,13 +1,15 @@
 local ShopConfig = {}
+local GameConfig = require(script.Parent.GameConfig)
 
 ShopConfig.POWER_UPS_DATA = {
     {
         Name = "Speed Boost",
         Description = "Increases your movement speed by 50% for 30 seconds",
         Cost = 2,
-        -- RobuxCost = 5,
-        -- ProductId = 3307385345,
+        RobuxCost = 5,
+        ProductId = 3307385345,
         Duration = 30,
+        EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
     },
     {
         Name = "Health Boost",
@@ -16,6 +18,7 @@ ShopConfig.POWER_UPS_DATA = {
         RobuxCost = 10,
         ProductId = 3307385342,
         Duration = 60,
+        EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
     },
     {
         Name = "Bee Shield",
@@ -24,20 +27,23 @@ ShopConfig.POWER_UPS_DATA = {
         RobuxCost = 20,
         ProductId = 3307385343,
         Duration = 45,
+        EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
     },
     {
-        Name = "Spawn Bees",
+        Name = "More Bees",
         Description = "Spawns 20 additional bees",
         Cost = 5, -- 1 HoneyDrip
         RobuxCost = 25, -- 10 Robux
         ProductId = 3307385346, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 0, -- Instant effect
+        EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
     },
     {
         Name = "Honey Drip",
         Description = "Purchase a Honey Drip with Robux",
         RobuxCost = 1,
         ProductId = 3307384691,
+        EnableRobuxPurchase = true,
     }
 }
 

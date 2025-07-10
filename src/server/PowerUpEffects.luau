@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 local PowerUpEndedEvent = RemoteEventsManager.getRemoteEvent("PowerUpEnded")
+local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 
 local PowerUpEffects = {}
 
@@ -54,13 +55,23 @@ function PowerUpEffects.BeeShield(character, duration)
     end
 end
 
--- Spawn Bees Effect
-function PowerUpEffects.SpawnBees(character, duration)
+-- More Bees Effect (was SpawnBees)
+function PowerUpEffects.MoreBees(character, duration)
     local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
     if spawnBeesRequestEvent then
         spawnBeesRequestEvent:Fire(GameConfig.BEE_SPAWN_COUNT, BrickColor.new(GameConfig.BEE_SPAWN_COLOR))
     else
         warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
+    end
+end
+
+-- Honey Drip Effect
+function PowerUpEffects.HoneyDrip(character, duration)
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        local currentDrips = PlayerDataManager.getPlayerHoneyDrips(player)
+        PlayerDataManager.updatePlayerHoneyDrips(player, currentDrips + 1)
+        print(player.Name .. " received 1 HoneyDrip from power-up effect!")
     end
 end
 

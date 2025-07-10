@@ -170,17 +170,14 @@ end
 local function setupMainUIButtons()
     for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
         local buttonName = powerUp.Name:gsub(" ", "") -- Remove spaces for button object names
-        logDebug("Attempting to connect button: " .. buttonName)
         connectMainUIButton(buttonName, function()
-            if powerUp.ProductId and powerUp.RobuxCost then
+            if powerUp.ProductId and powerUp.RobuxCost and powerUp.EnableRobuxPurchase then
                 logDebug(buttonName .. " button clicked, prompting Robux purchase.")
                 local MarketplaceService = game:GetService("MarketplaceService")
                 MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
-            elseif powerUp.Cost then
-                logDebug(buttonName .. " button clicked, firing shopEvent to server.")
-                shopEvent:FireServer(i)
             else
-                logDebug(buttonName .. " button clicked, but no purchase method defined in ShopConfig.")
+                logDebug(buttonName .. " button clicked, purchasing with HoneyDrips.")
+                shopEvent:FireServer(i)
             end
         end)
     end

@@ -7,6 +7,7 @@ GameConfig.DEBUG = true
 GameConfig.LOG_LEVEL = "debug" -- "debug", "info", "warn", "error"
 GameConfig.DEBUG_HONEY_DRIPS_VALUE = 100
 GameConfig.RUN_TESTS = false -- Set to false to disable unit tests in production
+GameConfig.ENABLE_ROBUX_PURCHASES = false -- Set to false to disable Robux purchases globally
 
 -- ============================================================================
 -- PLAYER SETTINGS
@@ -24,6 +25,9 @@ GameConfig.BASE_MIN_BEES = 30 -- Base minimum number of bees
 GameConfig.BEES_PER_PLAYER = 5 -- Additional bees per player
 GameConfig.MIN_SPAWN_INTERVAL = 1 -- Spawn every second when below minimum
 GameConfig.MAX_SPAWN_INTERVAL = 10 -- Normal spawn interval when at or above minimum
+GameConfig.BEE_SPAWN_COUNT = 10 -- Number of bees to spawn with power-up
+GameConfig.BEE_SPAWN_COLOR = "Bright red" -- Color of spawned bees for More Bees power-up
+
 
 -- ============================================================================
 -- BEE BEHAVIOR SETTINGS
@@ -71,8 +75,6 @@ GameConfig.BEEHIVE_SPAWN_Y = 0 -- Y position (ground level) for HoneyDrip spawni
 -- ============================================================================
 GameConfig.SPEED_BOOST_MULTIPLIER = 1.5 -- 50% speed increase
 GameConfig.HEALTH_BOOST_AMOUNT = 50 -- Additional health points
-GameConfig.BEE_SPAWN_COUNT = 10 -- Number of bees to spawn with power-up
-GameConfig.BEE_SPAWN_COLOR = "Really red" -- Color of spawned bees
 
 -- ============================================================================
 -- COLLISION GROUPS

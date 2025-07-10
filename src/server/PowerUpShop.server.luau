@@ -37,7 +37,14 @@ POWER_UPS[3].Effect = function(character)
 end
 
 POWER_UPS[4].Effect = function(character)
-    PowerUpEffects.SpawnBees(character, POWER_UPS[4].Duration)
+    PowerUpEffects.MoreBees(character, POWER_UPS[4].Duration)
+end
+
+-- Add Honey Drip effect if present
+if POWER_UPS[5] then
+    POWER_UPS[5].Effect = function(character)
+        PowerUpEffects.HoneyDrip(character, POWER_UPS[5].Duration)
+    end
 end
 
 -- Handle shop purchases (HoneyDrips)
@@ -55,23 +62,28 @@ RemoteEventsManager.connectToEvent("PowerUpShop", function(player, powerUpIndex)
         return
     end
 
+
+    -- If Robux purchase is enabled for this item, instruct client to use Robux dialog
+    if powerUp.EnableRobuxPurchase then
+        logDebug("Robux purchase enabled for", powerUp.Name, "- instructing client to use Robux dialog.")
+        RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Please use Robux to purchase this power-up.")
+        return
+    end
+
+    -- Otherwise, use HoneyDrips cost
     local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
     logDebug("Player", player.Name, "has", currentHoneyDrips, "HoneyDrips. PowerUp cost:", powerUp.Cost)
     if currentHoneyDrips >= powerUp.Cost then
         -- Deduct HoneyDrips
         PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips - powerUp.Cost)
-        
         -- Apply power-up effect
         logDebug("Applying effect for powerUp:", powerUp.Name)
         powerUp.Effect(character)
-        
         -- Notify player (server log)
         print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
-
         -- Send success feedback to client
         logDebug("Firing PurchaseFeedback to client for success")
         RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Purchased " .. powerUp.Name .. "!")
-
         -- Signal power-up active to client
         if powerUp.Duration > 0 then
             logDebug("Firing PowerUpActiveEvent for", player.Name, powerUp.Name, powerUp.Duration)
@@ -80,7 +92,6 @@ RemoteEventsManager.connectToEvent("PowerUpShop", function(player, powerUpIndex)
     else
         -- Notify player (server log)
         print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
-        
         -- Send insufficient funds feedback to client
         logDebug("Firing PurchaseFeedback to client for insufficient funds")
         RemoteEventsManager.fireToClient("PurchaseFeedback", player, "Not enough HoneyDrips!")
