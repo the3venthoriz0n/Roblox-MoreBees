@@ -249,10 +249,7 @@ local function updateBeeCount()
 end
 
 -- Function to create and spawn a flying bee that follows the closest player
-local function createFlyingCube(customColor)
-    print("[DEBUG] createFlyingCube called with customColor:", customColor, "typeof:", typeof(customColor))
-    -- logDebug("Attempting to create flying bee...")
-    
+local function createFlyingCube(customColor)    
     -- Get the bee model from ReplicatedStorage, as per your model's new location
     local beeModel = ReplicatedStorage:FindFirstChild("Bee")
     if not beeModel then

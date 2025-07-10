@@ -6,7 +6,6 @@ ShopConfig.POWER_UPS_DATA = {
         Name = "Speed Boost",
         Description = "Increases your movement speed by 50% for 30 seconds",
         Cost = 2,
-        RobuxCost = 5,
         ProductId = 3307385345,
         Duration = 30,
         EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
@@ -14,8 +13,7 @@ ShopConfig.POWER_UPS_DATA = {
     {
         Name = "Health Boost",
         Description = "Increases your max health by 50 for 1 minute",
-        Cost = 3,
-        RobuxCost = 10,
+        Cost = 4,
         ProductId = 3307385342,
         Duration = 60,
         EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
@@ -23,8 +21,7 @@ ShopConfig.POWER_UPS_DATA = {
     {
         Name = "Bee Shield",
         Description = "Bees cannot sting you for 45 seconds",
-        Cost = 4,
-        RobuxCost = 20,
+        Cost = 5,
         ProductId = 3307385343,
         Duration = 45,
         EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
@@ -32,8 +29,7 @@ ShopConfig.POWER_UPS_DATA = {
     {
         Name = "More Bees",
         Description = "Spawns 20 additional bees",
-        Cost = 5, -- 1 HoneyDrip
-        RobuxCost = 25, -- 10 Robux
+        Cost = 10, -- 1 HoneyDrip
         ProductId = 3307385346, -- REPLACE WITH YOUR ACTUAL DEVELOPER PRODUCT ID
         Duration = 0, -- Instant effect
         EnableRobuxPurchase = GameConfig.ENABLE_ROBUX_PURCHASES,
@@ -41,8 +37,8 @@ ShopConfig.POWER_UPS_DATA = {
     {
         Name = "Honey Drip",
         Description = "Purchase a Honey Drip with Robux",
-        RobuxCost = 1,
-        ProductId = 3307384691,
+        Value = 10,
+        ProductId = 3330220271, -- 10robux
         EnableRobuxPurchase = true,
     }
 }

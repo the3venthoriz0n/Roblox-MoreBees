@@ -29,7 +29,6 @@ function RemoteEventsManager.createRemoteEvents()
     createOrGetEvent("PurchaseFeedbackEvent")
     createOrGetEvent("PowerUpActiveEvent")
     createOrGetEvent("PowerUpEndedEvent")
-    createOrGetEvent("ToggleShopEvent")
     
     -- Bindable event for bee spawning
     local bindable = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")

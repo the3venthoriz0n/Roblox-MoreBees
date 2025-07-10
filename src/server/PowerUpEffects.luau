@@ -3,8 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Require GameConfig for constants
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
-local PowerUpEndedEvent = RemoteEventsManager.getRemoteEvent("PowerUpEnded")
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 
 local PowerUpEffects = {}
@@ -46,9 +46,16 @@ function PowerUpEffects.BeeShield(character, duration)
     local player = Players:GetPlayerFromCharacter(character)
     if player then
         player:SetAttribute("BeeShield", true)
+        -- Create a ForceField for the duration
+        local forceField = Instance.new("ForceField")
+        forceField.Visible = true -- Set to false if you want it hidden
+        forceField.Parent = character
         task.delay(duration, function()
             if player then
                 player:SetAttribute("BeeShield", false)
+            end
+            if forceField and forceField.Parent then
+                forceField:Destroy()
             end
             RemoteEventsManager.firePowerUpEnded(character, "Bee Shield")
         end)
@@ -70,7 +77,7 @@ function PowerUpEffects.HoneyDrip(character, duration)
     local player = Players:GetPlayerFromCharacter(character)
     if player then
         local currentDrips = PlayerDataManager.getPlayerHoneyDrips(player)
-        PlayerDataManager.updatePlayerHoneyDrips(player, currentDrips + 1)
+        PlayerDataManager.updatePlayerHoneyDrips(player, currentDrips + ShopConfig.POWER_UPS_DATA[5].Value)
         print(player.Name .. " received 1 HoneyDrip from power-up effect!")
     end
 end
