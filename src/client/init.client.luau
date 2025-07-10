@@ -6,6 +6,23 @@ print("Client script loaded Rojo OG!")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Wait for MainUI and WelcomeMessage to exist
+local mainUI = playerGui:WaitForChild("MainUI")
+local welcomeMessage = mainUI:WaitForChild("WelcomeMessage")
+
+-- Center the message
+welcomeMessage.AnchorPoint = Vector2.new(0.5, 0.5)
+welcomeMessage.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+-- Show the message
+welcomeMessage.Visible = true
+
+-- Hide after 5 seconds
+task.delay(5, function()
+    welcomeMessage.Visible = false
+end)
 
 -- Respawn timer variables
 local respawnTime = 5
