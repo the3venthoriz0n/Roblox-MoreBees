@@ -51,62 +51,70 @@ local function logDebug(...)
 end
 
 
--- Listen for PowerUpActiveEvent
-PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)
-    print("Client: PowerUpActiveEvent received for", powerUpName, "with duration", duration)
-    -- Remove existing label if power-up is re-activated
-    if activePowerUpLabels[powerUpName] then
-        activePowerUpLabels[powerUpName]:Destroy()
-        activePowerUpLabels[powerUpName] = nil
+-- Generic function to show countdown timer above any power-up button
+local activeTimerConnections = {}
+local activeTimerEndTimes = {}
+local function showPowerUpTimer(buttonName, duration)
+    local playerGui = player:WaitForChild("PlayerGui")
+    local mainUI = playerGui:FindFirstChild("MainUI")
+    if not mainUI then return end
+    local button = mainUI:FindFirstChild(buttonName)
+    if not button then return end
+    local timerLabel = button:FindFirstChild("ActiveTimer")
+    if not timerLabel then return end
+    timerLabel.Visible = true
+    -- If already active, add to the remaining time
+    local now = tick()
+    local newEndTime = now + duration
+    if activeTimerEndTimes[buttonName] and activeTimerEndTimes[buttonName] > now then
+        newEndTime = activeTimerEndTimes[buttonName] + duration
     end
-
-    local powerUpLabel = Instance.new("TextLabel")
-    powerUpLabel.Name = powerUpName .. "_ActiveDisplay"
-    powerUpLabel.Size = UDim2.new(1, 0, 0, 25) -- Fill width of container, fixed height
-    powerUpLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    powerUpLabel.BackgroundTransparency = 0.8
-    powerUpLabel.TextColor3 = Color3.new(1, 1, 1)
-    powerUpLabel.TextScaled = false
-    powerUpLabel.TextSize = 18
-    powerUpLabel.Font = Enum.Font.GothamBold
-    powerUpLabel.TextXAlignment = Enum.TextXAlignment.Left
-    powerUpLabel.Text = powerUpName .. ": " .. duration .. "s"
-    powerUpLabel.LayoutOrder = #activePowerUpLabels + 1 -- For UIListLayout sorting
-    powerUpLabel.Parent = activeEffectsContainer
-    
-    activePowerUpLabels[powerUpName] = powerUpLabel
-
-    -- Start client-side countdown
-    local startTime = tick()
+    activeTimerEndTimes[buttonName] = newEndTime
+    -- Disconnect any previous timer for this button
+    if activeTimerConnections[buttonName] then
+        activeTimerConnections[buttonName]:Disconnect()
+    end
     local connection
-    connection = game:GetService("RunService").Heartbeat:Connect(function()
-        local remainingTime = duration - (tick() - startTime)
-        if powerUpLabel and powerUpLabel.Parent then
-            powerUpLabel.Text = powerUpName .. ": " .. math.max(0, math.ceil(remainingTime)) .. "s"
-            if remainingTime <= 0 then
-                connection:Disconnect()
-                activePowerUpLabels[powerUpName] = nil
-                powerUpLabel:Destroy()
-                activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
-            end
-        else
-            connection:Disconnect()
-            activePowerUpLabels[powerUpName] = nil
+    connection = game:GetService("RunService").RenderStepped:Connect(function()
+        local remaining = math.max(0, activeTimerEndTimes[buttonName] - tick())
+        timerLabel.Text = tostring(math.ceil(remaining))
+        if remaining <= 0 then
+            timerLabel.Visible = false
+            timerLabel.Text = ""
+            if connection then connection:Disconnect() end
+            activeTimerConnections[buttonName] = nil
+            activeTimerEndTimes[buttonName] = nil
         end
     end)
-    activeEffectsContainer.Size = activeEffectsContainer.Size + UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
+    activeTimerConnections[buttonName] = connection
+end
+
+local function hidePowerUpTimer(buttonName)
+    local playerGui = player:WaitForChild("PlayerGui")
+    local mainUI = playerGui:FindFirstChild("MainUI")
+    if not mainUI then return end
+    local button = mainUI:FindFirstChild(buttonName)
+    if not button then return end
+    local timerLabel = button:FindFirstChild("ActiveTimer")
+    if timerLabel then
+        timerLabel.Visible = false
+        timerLabel.Text = ""
+    end
+    if activeTimerConnections[buttonName] then
+        activeTimerConnections[buttonName]:Disconnect()
+        activeTimerConnections[buttonName] = nil
+    end
+    activeTimerEndTimes[buttonName] = nil
+end
+
+PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)
+    local buttonName = powerUpName:gsub(" ", "")
+    showPowerUpTimer(buttonName, duration)
 end)
 
--- Listen for PowerUpEndedEvent from server (for non-countdown related removal)
 PowerUpEndedEvent.OnClientEvent:Connect(function(powerUpName)
-    print("Client: PowerUpEndedEvent received for", powerUpName)
-    if activePowerUpLabels[powerUpName] then
-        local labelToDestroy = activePowerUpLabels[powerUpName]
-        activePowerUpLabels[powerUpName] = nil
-        labelToDestroy:Destroy()
-        -- Adjust container size
-        activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
-    end
+    local buttonName = powerUpName:gsub(" ", "")
+    hidePowerUpTimer(buttonName)
 end)
 
 -- Listen for purchase feedback from server
@@ -185,6 +193,66 @@ local function setupMainUIButtons()
     end
 end
 
+local function clearAllPowerUpTimers()
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+    local mainUI = playerGui:FindFirstChild("MainUI")
+    if not mainUI then return end
+    for _, button in ipairs(mainUI:GetChildren()) do
+        if button:IsA("GuiObject") then
+            local timerLabel = button:FindFirstChild("ActiveTimer")
+            if timerLabel then
+                timerLabel.Visible = false
+                timerLabel.Text = ""
+            end
+        end
+    end
+    -- Disconnect all timer connections and clear end times
+    for k, conn in pairs(activeTimerConnections) do
+        if conn then conn:Disconnect() end
+        activeTimerConnections[k] = nil
+    end
+    for k, _ in pairs(activeTimerEndTimes) do
+        activeTimerEndTimes[k] = nil
+    end
+end
+
+local function setupGlobalTooltip()
+    local playerGui = player:WaitForChild("PlayerGui")
+    local mainUI = playerGui:WaitForChild("MainUI")
+    local globalTooltip = mainUI:FindFirstChild("GlobalToolTip")
+    if not globalTooltip then return end
+
+    for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
+        local buttonName = powerUp.ButtonName or powerUp.Name:gsub(" ", "")
+        local button = mainUI:FindFirstChild(buttonName)
+        if button then
+            local desc = powerUp.Description or ""
+            local function show()
+                globalTooltip.Text = desc
+                globalTooltip.Visible = true
+                -- Center of the screen
+                local camera = workspace.CurrentCamera
+                if camera then
+                    local viewportSize = camera.ViewportSize
+                    globalTooltip.Position = UDim2.new(
+                        0, (viewportSize.X - globalTooltip.AbsoluteSize.X) / 2,
+                        0, (viewportSize.Y - globalTooltip.AbsoluteSize.Y) / 2
+                    )
+                end
+            end
+            local function hide()
+                globalTooltip.Visible = false
+            end
+            button.MouseEnter:Connect(show)
+            button.MouseLeave:Connect(hide)
+            button.SelectionGained:Connect(show)
+            button.SelectionLost:Connect(hide)
+        end
+    end
+end
+
+-- Hook into player death to clear timers and effects
 player.CharacterAdded:Connect(function(character)
     clearActiveEffectsDisplay()
     disconnectAllMainUIButtons()
@@ -192,11 +260,13 @@ player.CharacterAdded:Connect(function(character)
     humanoid.Died:Connect(function()
         clearActiveEffectsDisplay()
         disconnectAllMainUIButtons()
+        clearAllPowerUpTimers()
     end)
     task.wait(0.1)
     setupMainUIButtons()
+    setupGlobalTooltip()
 end)
 
 if player.Character then
-    setupMainUIButtons()
+    setupGlobalTooltip()
 end 
