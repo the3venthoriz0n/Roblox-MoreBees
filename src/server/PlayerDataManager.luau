@@ -194,7 +194,9 @@ function PlayerDataManager.onPlayerAdded(player, DEFAULT_SPAWN_POSITION)
             end
             -- Reset HoneyDrips
             PlayerDataManager.updatePlayerHoneyDrips(player, 0)
-            -- Note: Active effects are now handled by PowerUpEffects.clearAllEffects()
+            -- Clear all active effects when player dies
+            local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
+            PowerUpEffects.clearAllEffects(player)
         end)
     end)
     
