@@ -6,20 +6,20 @@ local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
 local ServerStorage = game:GetService("ServerStorage") -- Get ServerStorage
 
--- Require GameConfig for constants
+-- Require Modules
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
-
--- Require PlayerDataManager module
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
-
--- Require RemoteEventsManager module
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 
--- Initialize PlayerDataManager
+-- Initialize 
 PlayerDataManager.initialize()
-
--- Create all remote events
 RemoteEventsManager.createRemoteEvents()
+
+local function logDebug(...)
+    if GameConfig.LOG_LEVEL == "debug" then
+        print("[DEBUG]", ...)
+    end
+end
 
 -- Run unit tests (controlled by GameConfig.RUN_TESTS)
 if GameConfig.RUN_TESTS then
@@ -248,7 +248,7 @@ end
 
 -- Function to create and spawn a flying bee that follows the closest player
 local function createFlyingCube(customColor)
-    print("Attempting to create flying bee...")
+    logDebug("Attempting to create flying bee...")
     
     -- Get the bee model from ReplicatedStorage, as per your model's new location
     local beeModel = ReplicatedStorage:FindFirstChild("Bee")
@@ -256,7 +256,7 @@ local function createFlyingCube(customColor)
         warn("Bee model not found in ReplicatedStorage! Please add a bee model named 'Bee' to ReplicatedStorage.")
         return nil
     end
-    print("Bee model found in ReplicatedStorage")
+    logDebug("Bee model found in ReplicatedStorage")
     
     -- Clone the bee model
     local bee = beeModel:Clone()
