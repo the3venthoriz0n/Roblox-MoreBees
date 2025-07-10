@@ -221,7 +221,10 @@ else
     warn("Failed to connect to PowerUpShopEvent")
 end
 
--- Handle Robux purchases with redundancy
+-- Track processed receipts to prevent duplicate processing
+local processedReceipts = {}
+
+-- Handle Robux purchases with redundancy and duplicate prevention
 local function processRobuxReceipt(receiptInfo)
     if not receiptInfo then
         warn("Invalid receipt info")
@@ -229,6 +232,13 @@ local function processRobuxReceipt(receiptInfo)
     end
     
     return safeExecute("processRobuxReceipt", function()
+        -- Check if this receipt has already been processed
+        local receiptKey = receiptInfo.PlayerId .. "_" .. receiptInfo.PurchaseId
+        if processedReceipts[receiptKey] then
+            logDebug("Receipt already processed for player:", receiptInfo.PlayerId, "purchase:", receiptInfo.PurchaseId)
+            return Enum.ProductPurchaseDecision.PurchaseGranted -- Already processed, return success
+        end
+        
         local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
         if not player then
             return Enum.ProductPurchaseDecision.NotProcessedYet -- Player not in game
@@ -242,6 +252,9 @@ local function processRobuxReceipt(receiptInfo)
         -- Find the power-up associated with the product ID
         for _, powerUp in ipairs(POWER_UPS) do
             if powerUp.ProductId == receiptInfo.ProductId then
+                -- Mark receipt as processed before applying effect
+                processedReceipts[receiptKey] = true
+                
                 -- Apply power-up effect if defined
                 if powerUp.Effect then
                     powerUp.Effect(character)
@@ -286,6 +299,17 @@ local function monitorAndRecover()
         end
     end)
 end
+
+-- Clean up player data when they leave
+Players.PlayerRemoving:Connect(function(player)
+    -- Clean up processed receipts for this player
+    local playerId = player.UserId
+    for receiptKey, _ in pairs(processedReceipts) do
+        if receiptKey:find(tostring(playerId) .. "_") then
+            processedReceipts[receiptKey] = nil
+        end
+    end
+end)
 
 -- Start monitoring
 monitorAndRecover()

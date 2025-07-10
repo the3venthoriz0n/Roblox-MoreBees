@@ -147,13 +147,14 @@ function PowerUpEffects.MoreBees(character, duration)
     end
 end
 
--- Honey Drip Effect (unchanged)
+-- Honey Drip Effect - gives exact amount specified in ShopConfig
 function PowerUpEffects.HoneyDrip(character, duration)
     local player = Players:GetPlayerFromCharacter(character)
     if player then
         local currentDrips = PlayerDataManager.getPlayerHoneyDrips(player)
-        PlayerDataManager.updatePlayerHoneyDrips(player, currentDrips + ShopConfig.POWER_UPS_DATA[5].Value)
-        print(player.Name .. " received 1 HoneyDrip from power-up effect!")
+        local honeyDripAmount = ShopConfig.POWER_UPS_DATA[5].Value or 10 -- Default to 10 if not specified
+        PlayerDataManager.updatePlayerHoneyDrips(player, currentDrips + honeyDripAmount)
+        print(player.Name .. " received " .. honeyDripAmount .. " HoneyDrips from Robux purchase!")
     end
 end
 
