@@ -1,7 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Require the shared shop configuration
 local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
@@ -14,155 +13,6 @@ local purchaseFeedbackEvent = ReplicatedStorage:WaitForChild("PurchaseFeedbackEv
 local PowerUpActiveEvent = ReplicatedStorage:WaitForChild("PowerUpActiveEvent") -- New: Get active power-up event
 local PowerUpEndedEvent = ReplicatedStorage:WaitForChild("PowerUpEndedEvent") -- New: Get power-up ended event
 
--- Create shop GUI
-local function createShopGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "PowerUpShopGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Enabled = false -- Start with GUI hidden
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0.6, 0, 0.7, 0) -- Made bigger and responsive (60% width, 70% height of screen)
-    frame.Position = UDim2.new(0.5, -frame.Size.X.Offset/2, 0.5, -frame.Size.Y.Offset/2) -- Center the frame
-    frame.AnchorPoint = Vector2.new(0.5, 0.5) -- Anchor point for centering
-    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    frame.BackgroundTransparency = 0.2 -- Slightly transparent
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 50)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    title.Text = "Power-Up Shop"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.Parent = frame
-    
-    local honeyDripCount = Instance.new("TextLabel")
-    honeyDripCount.Name = "HoneyDripCountLabel"
-    honeyDripCount.Size = UDim2.new(1, 0, 0, 30)
-    honeyDripCount.Position = UDim2.new(0, 0, 0, 50)
-    honeyDripCount.BackgroundTransparency = 1
-    honeyDripCount.Text = "HoneyDrips: 0"
-    honeyDripCount.TextColor3 = Color3.new(1, 1, 1)
-    honeyDripCount.TextScaled = true
-    honeyDripCount.Font = Enum.Font.GothamBold
-    honeyDripCount.Parent = frame
-    
-    -- Feedback TextLabel
-    local feedbackLabel = Instance.new("TextLabel")
-    feedbackLabel.Name = "FeedbackLabel"
-    feedbackLabel.Size = UDim2.new(0.6, 0, 0, 40) -- Responsive width
-    feedbackLabel.Position = UDim2.new(0.5, -feedbackLabel.Size.X.Offset/2, 0.05, 0) -- Top center responsive
-    feedbackLabel.AnchorPoint = Vector2.new(0.5, 0.5) -- Anchor point for centering
-    feedbackLabel.BackgroundTransparency = 0.5
-    feedbackLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    feedbackLabel.TextColor3 = Color3.new(1, 1, 1)
-    feedbackLabel.TextScaled = true
-    feedbackLabel.Font = Enum.Font.GothamBold
-    feedbackLabel.Text = ""
-    feedbackLabel.ZIndex = 2 -- Ensure it's on top
-    feedbackLabel.Visible = false
-    feedbackLabel.Parent = screenGui -- Parent to screenGui, not frame
-
-    -- Update HoneyDrip count when it changes
-    local function updateHoneyDripDisplay()
-        local leaderstats = player:FindFirstChild("leaderstats")
-        if leaderstats then
-            local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-            if honeyDrips then
-                honeyDripCount.Text = "HoneyDrips: " .. honeyDrips.Value
-            else
-                honeyDripCount.Text = "HoneyDrips: 0"
-            end
-        else
-            honeyDripCount.Text = "HoneyDrips: 0"
-        end
-    end
-
-    -- Initial update
-    updateHoneyDripDisplay()
-
-    -- Listen for changes in HoneyDrips value
-    local function setupHoneyDripsListener()
-        local leaderstats = player:WaitForChild("leaderstats")
-        local honeyDrips = leaderstats:WaitForChild("HoneyDrips")
-        honeyDrips.Changed:Connect(updateHoneyDripDisplay)
-        updateHoneyDripDisplay() -- Initial update after listener is set up
-    end
-
-    -- Call setup function when player character is added (for respawns)
-    player.CharacterAdded:Connect(setupHoneyDripsListener)
-
-    -- Call setup function immediately in case character is already added
-    if player.Character then
-        setupHoneyDripsListener()
-    end
-
-    -- Create buttons for each power-up
-    local buttonHeight = 0.25 -- Increased responsive height
-    local spacing = 0.03 -- Adjusted responsive spacing
-    local startY = 0.2 -- Adjusted responsive start Y
-    
-    for i, powerUp in ipairs(POWER_UPS) do
-        -- HoneyDrip Purchase Button
-        local honeyDripButton = Instance.new("TextButton")
-        honeyDripButton.Size = UDim2.new(0.45, 0, buttonHeight, 0) -- Responsive width and height
-        honeyDripButton.Position = UDim2.new(0.05, 0, startY + (i-1) * (buttonHeight + spacing), 0) -- Responsive position
-        honeyDripButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        honeyDripButton.Text = powerUp.Name .. "\n" .. powerUp.Description .. "\nCost: " .. powerUp.Cost .. " HoneyDrips"
-        honeyDripButton.TextColor3 = Color3.new(1, 1, 1)
-        honeyDripButton.TextScaled = true
-        honeyDripButton.Font = Enum.Font.GothamBold
-        honeyDripButton.TextWrapped = true -- Ensure text wraps
-        honeyDripButton.Parent = frame
-        
-        honeyDripButton.MouseButton1Click:Connect(function()
-            shopEvent:FireServer(i)
-        end)
-
-        -- Add hover effects for HoneyDrip button
-        local originalHoneyDripColor = honeyDripButton.BackgroundColor3
-        honeyDripButton.MouseEnter:Connect(function()
-            honeyDripButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Brighter grey
-        end)
-        honeyDripButton.MouseLeave:Connect(function()
-            honeyDripButton.BackgroundColor3 = originalHoneyDripColor
-        end)
-
-        -- Robux Purchase Button
-        local robuxButton = Instance.new("TextButton")
-        robuxButton.Size = UDim2.new(0.45, 0, buttonHeight, 0) -- Responsive width and height
-        robuxButton.Position = UDim2.new(0.5, 0, startY + (i-1) * (buttonHeight + spacing), 0) -- Responsive position
-        robuxButton.BackgroundColor3 = Color3.fromRGB(100, 40, 100) -- Purple color for Robux
-        robuxButton.Text = "Buy with Robux\n" .. powerUp.RobuxCost .. " R$"
-        robuxButton.TextColor3 = Color3.new(1, 1, 1)
-        robuxButton.TextScaled = true
-        robuxButton.Font = Enum.Font.GothamBold
-        robuxButton.TextWrapped = true -- Ensure text wraps
-        robuxButton.Parent = frame
-
-        robuxButton.MouseButton1Click:Connect(function()
-            MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
-        end)
-
-        -- Add hover effects for Robux button
-        local originalRobuxColor = robuxButton.BackgroundColor3
-        robuxButton.MouseEnter:Connect(function()
-            robuxButton.BackgroundColor3 = Color3.fromRGB(130, 50, 130) -- Brighter purple
-        end)
-        robuxButton.MouseLeave:Connect(function()
-            robuxButton.BackgroundColor3 = originalRobuxColor
-        end)
-    end
-    
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-    return screenGui -- Return the screenGui so it can be enabled/disabled
-end
-
-local currentShopGui = nil -- Store reference to the created GUI
 
 -- Active Power-Up Display GUI
 local activePowerUpGui = Instance.new("ScreenGui")
@@ -234,17 +84,19 @@ PowerUpActiveEvent.OnClientEvent:Connect(function(powerUpName, duration)
     local connection
     connection = game:GetService("RunService").Heartbeat:Connect(function()
         local remainingTime = duration - (tick() - startTime)
-        updatePowerUpCountdown(powerUpName, powerUpLabel, remainingTime)
-
-        if remainingTime <= 0 then
+        if powerUpLabel and powerUpLabel.Parent then
+            powerUpLabel.Text = powerUpName .. ": " .. math.max(0, math.ceil(remainingTime)) .. "s"
+            if remainingTime <= 0 then
+                connection:Disconnect()
+                activePowerUpLabels[powerUpName] = nil
+                powerUpLabel:Destroy()
+                activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
+            end
+        else
             connection:Disconnect()
             activePowerUpLabels[powerUpName] = nil
-            -- Adjust container size
-            activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
         end
     end)
-
-    -- Adjust container size to fit new label
     activeEffectsContainer.Size = activeEffectsContainer.Size + UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
 end)
 
@@ -258,14 +110,6 @@ PowerUpEndedEvent.OnClientEvent:Connect(function(powerUpName)
         -- Adjust container size
         activeEffectsContainer.Size = activeEffectsContainer.Size - UDim2.new(0, 0, 0, 25 + activeEffectsLayout.Padding.Offset)
     end
-end)
-
--- Listen for toggle event from server
-toggleShopEvent.OnClientEvent:Connect(function()
-    if not currentShopGui then
-        currentShopGui = createShopGui()
-    end
-    currentShopGui.Enabled = not currentShopGui.Enabled
 end)
 
 -- Listen for purchase feedback from server
@@ -285,7 +129,53 @@ purchaseFeedbackEvent.OnClientEvent:Connect(function(message)
     end
 end)
 
--- Initial GUI creation (for players already in game)
-if player and not player.PlayerGui:FindFirstChild("PowerUpShopGui") then
-    currentShopGui = createShopGui()
+
+-- Keep track of whether the button is already connected
+local speedBoostButtonConnected = false
+
+local function connectSpeedBoostButton()
+    if speedBoostButtonConnected then
+        return -- Already connected, don't connect again
+    end
+    
+    local playerGui = player:WaitForChild("PlayerGui")
+    local mainUI = playerGui:WaitForChild("MainUI")
+    local speedBoostButton = mainUI:WaitForChild("SpeedBoost")
+    
+    if speedBoostButton then
+        speedBoostButton.MouseButton1Click:Connect(function()
+            shopEvent:FireServer(1)
+        end)
+        speedBoostButtonConnected = true
+    end
+end
+
+local function clearActiveEffectsDisplay()
+    for _, label in pairs(activePowerUpLabels) do
+        if label and label.Parent then
+            label:Destroy()
+        end
+    end
+    activePowerUpLabels = {}
+    activeEffectsContainer.Size = UDim2.new(0, 200, 0, 0)
+end
+
+player.CharacterAdded:Connect(function(character)
+    -- Always clear active effects on respawn
+    clearActiveEffectsDisplay()
+    -- Reset connection flag for new character
+    speedBoostButtonConnected = false
+    -- Wait for Humanoid to be ready
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        clearActiveEffectsDisplay()
+        speedBoostButtonConnected = false
+    end)
+    -- Wait a short moment for PlayerGui/MainUI to be ready
+    task.wait(0.1)
+    connectSpeedBoostButton()
+end)
+
+if player.Character then
+    connectSpeedBoostButton()
 end 

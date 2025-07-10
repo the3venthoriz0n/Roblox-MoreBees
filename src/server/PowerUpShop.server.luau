@@ -2,8 +2,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
--- Require the shared shop configuration data
+local LOG_LEVEL = "debug" -- or "info"
+
+local function logDebug(...)
+    if LOG_LEVEL == "debug" then
+        print("[DEBUG]", ...)
+    end
+end
+
+
+-- Require modules
 local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
+local PowerUpEffects = require(script.Parent.PowerUpEffects)
 
 -- Define server-side POWER_UPS with effects (durations will come from ShopConfig)
 -- This table will combine the shared data with server-specific logic
@@ -12,59 +22,6 @@ for i, data in ipairs(ShopConfig.POWER_UPS_DATA) do
     POWER_UPS[i] = table.clone(data) -- Copy shared data including Duration
 end
 
--- Add server-side effects to the copied power-up data
-POWER_UPS[1].Effect = function(character)
-    local humanoid = character:FindFirstChild("Humanoid")
-    if humanoid then
-        local originalSpeed = humanoid.WalkSpeed
-        humanoid.WalkSpeed = originalSpeed * 1.5
-        task.delay(POWER_UPS[1].Duration, function()
-            if humanoid and humanoid.Parent then
-                humanoid.WalkSpeed = originalSpeed
-            end
-            PowerUpEndedEvent:FireClient(Players:GetPlayerFromCharacter(character), POWER_UPS[1].Name) -- Signal end of effect
-        end)
-    end
-end
-
-POWER_UPS[2].Effect = function(character)
-    local humanoid = character:FindFirstChild("Humanoid")
-    if humanoid then
-        local originalMaxHealth = humanoid.MaxHealth
-        humanoid.MaxHealth = originalMaxHealth + 50
-        humanoid.Health = humanoid.Health + 50
-        task.delay(POWER_UPS[2].Duration, function()
-            if humanoid and humanoid.Parent then
-                humanoid.MaxHealth = originalMaxHealth
-                humanoid.Health = math.min(humanoid.Health, originalMaxHealth)
-            end
-            PowerUpEndedEvent:FireClient(Players:GetPlayerFromCharacter(character), POWER_UPS[2].Name) -- Signal end of effect
-        end)
-    end
-end
-
-POWER_UPS[3].Effect = function(character)
-    local player = Players:GetPlayerFromCharacter(character)
-    if player then
-        player:SetAttribute("BeeShield", true)
-        task.delay(POWER_UPS[3].Duration, function()
-            if player then
-                player:SetAttribute("BeeShield", false)
-            end
-            PowerUpEndedEvent:FireClient(player, POWER_UPS[3].Name) -- Signal end of effect
-        end)
-    end
-end
-
-POWER_UPS[4].Effect = function(character)
-    -- Fire the BindableEvent to request bee spawning
-    local spawnBeesRequestEvent = ReplicatedStorage:FindFirstChild("SpawnBeesRequestEvent")
-    if spawnBeesRequestEvent then
-        spawnBeesRequestEvent:Fire(10, BrickColor.new("Really red")) -- Request to spawn 10 red bees
-    else
-        warn("SpawnBeesRequestEvent not found in ReplicatedStorage!")
-    end
-end
 
 -- Create RemoteEvent for shop interactions
 local shopEvent = Instance.new("RemoteEvent")
@@ -82,9 +39,33 @@ PowerUpActiveEvent.Name = "PowerUpActiveEvent"
 PowerUpActiveEvent.Parent = ReplicatedStorage
 
 -- New RemoteEvent for signaling power-up end to the client
-local PowerUpEndedEvent = Instance.new("RemoteEvent")
-PowerUpEndedEvent.Name = "PowerUpEndedEvent"
-PowerUpEndedEvent.Parent = ReplicatedStorage
+local PowerUpEndedEvent = ReplicatedStorage:FindFirstChild("PowerUpEndedEvent")
+if not PowerUpEndedEvent then
+    local event = Instance.new("RemoteEvent")
+    event.Name = "PowerUpEndedEvent"
+    event.Parent = ReplicatedStorage
+    PowerUpEndedEvent = event
+end
+
+
+-- Add server-side effects to the copied power-up data
+POWER_UPS[1].Effect = function(character)
+    PowerUpEffects.SpeedBoost(character, POWER_UPS[1].Duration)
+end
+
+POWER_UPS[2].Effect = function(character)
+    PowerUpEffects.HealthBoost(character, POWER_UPS[2].Duration)
+end
+
+POWER_UPS[3].Effect = function(character)
+    PowerUpEffects.BeeShield(character, POWER_UPS[3].Duration)
+end
+
+POWER_UPS[4].Effect = function(character)
+    PowerUpEffects.SpawnBees(character, POWER_UPS[4].Duration)
+end
+
+
 
 -- Function to get player's HoneyDrip count
 local function getPlayerHoneyDrips(player)
@@ -111,7 +92,9 @@ local function updatePlayerHoneyDrips(player, newAmount)
 end
 
 -- Handle shop purchases (HoneyDrips)
+
 shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
+    logDebug("shopEvent.OnServerEvent called for player:", player and player.Name or tostring(player), "powerUpIndex:", powerUpIndex)
     local character = player.Character
     if not character then return end
 
@@ -119,11 +102,13 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
     if not powerUp then return end
 
     local currentHoneyDrips = getPlayerHoneyDrips(player)
+    logDebug("Player", player.Name, "has", currentHoneyDrips, "HoneyDrips. PowerUp cost:", powerUp.Cost)
     if currentHoneyDrips >= powerUp.Cost then
         -- Deduct HoneyDrips
         updatePlayerHoneyDrips(player, currentHoneyDrips - powerUp.Cost)
         
         -- Apply power-up effect
+        logDebug("Applying effect for powerUp:", powerUp.Name)
         powerUp.Effect(character)
         
         -- Notify player (server log)
@@ -134,6 +119,7 @@ shopEvent.OnServerEvent:Connect(function(player, powerUpIndex)
 
         -- Signal power-up active to client
         if powerUp.Duration > 0 then
+            logDebug("Firing PowerUpActiveEvent for", player.Name, powerUp.Name, powerUp.Duration)
             PowerUpActiveEvent:FireClient(player, powerUp.Name, powerUp.Duration)
         end
 
@@ -191,3 +177,5 @@ toggleShopEvent.OnServerEvent:Connect(function(player)
     toggleShopEvent:FireClient(player)
     print("Server fired ToggleShopEvent back to client for player: ", player.Name)
 end) 
+
+-- Removed any code that connects to CharacterAdded or UI button events. All UI logic should be in the client script. 

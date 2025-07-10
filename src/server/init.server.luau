@@ -6,24 +6,101 @@ local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
 local ServerStorage = game:GetService("ServerStorage") -- Get ServerStorage
 local Debris = game:GetService("Debris") -- Get Debris Service
+local DEBUG = false -- Set to false to disable debug honey drips
+local DEBUG_HONEY_DRIPS_VALUE = 100
 
--- Helper functions for HoneyDrips
-local function getPlayerHoneyDrips(player)
+-- Initialize player stats when they join
+local function initializePlayerStats(player)
+    -- debugPrint("Initializing stats for player: ", player.Name)
+    
+    -- Create leaderstats folder if it doesn't exist
     local leaderstats = player:FindFirstChild("leaderstats")
-    if not leaderstats then return 0 end
-    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
-    return honeyDrips and honeyDrips.Value or 0
-end
-
-local function updatePlayerHoneyDrips(player, newAmount)
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if not leaderstats then return end
+    if not leaderstats then
+        leaderstats = Instance.new("Folder")
+        leaderstats.Name = "leaderstats"
+        leaderstats.Parent = player
+        -- debugPrint("Created leaderstats folder for ", player.Name)
+    end
+    
+    -- Create HoneyDrips stat if it doesn't exist
     local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
     if not honeyDrips then
         honeyDrips = Instance.new("IntValue")
         honeyDrips.Name = "HoneyDrips"
+        honeyDrips.Value = 0
         honeyDrips.Parent = leaderstats
+        -- debugPrint("Created HoneyDrips stat for ", player.Name)
     end
+    return leaderstats
+end
+
+local function setDebugHoneyDrips(player)
+    local leaderstats = player:FindFirstChild("leaderstats") or player:WaitForChild("leaderstats")
+    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips") or leaderstats:WaitForChild("HoneyDrips")
+    honeyDrips.Value = DEBUG_HONEY_DRIPS_VALUE
+end
+
+-- Connect player joining
+game.Players.PlayerAdded:Connect(function(player)
+    -- debugPrint("Player joined: ", player.Name)
+    initializePlayerStats(player)
+    if DEBUG then
+        setDebugHoneyDrips(player)
+    end
+end)
+
+-- Helper functions for HoneyDrips
+local function getPlayerHoneyDrips(player)
+    -- print("debugPrint status: ", typeof(debugPrint))
+    -- if debugPrint then debugPrint("getPlayerHoneyDrips called for ", player.Name) end
+    local leaderstats = player:WaitForChild("leaderstats")
+    -- Ensure leaderstats is not nil before attempting to access .Name
+    if leaderstats then
+        -- print("debugPrint status: ", typeof(debugPrint))
+        -- if debugPrint then debugPrint("getPlayerHoneyDrips: leaderstats found for ", player.Name, ": ", (leaderstats and leaderstats.Name or "nil"), ", Type: ", typeof(leaderstats)) end
+    else
+        warn("getPlayerHoneyDrips: CRITICAL - leaderstats still nil after initialization for player: ", player.Name)
+        return 0 -- Prevent further errors by returning a default value
+    end
+    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
+    if not honeyDrips then
+        warn("getPlayerHoneyDrips: HoneyDrips not found for player: ", player.Name)
+        honeyDrips = Instance.new("IntValue")
+        honeyDrips.Name = "HoneyDrips"
+        honeyDrips.Value = 0
+        honeyDrips.Parent = leaderstats
+        -- print("debugPrint status: ", typeof(debugPrint))
+        -- if debugPrint then debugPrint("Created HoneyDrips stat for ", player.Name) end
+    end
+    -- print("debugPrint status: ", typeof(debugPrint))
+    -- if debugPrint then debugPrint("getPlayerHoneyDrips: honeyDrips found: ", tostring(honeyDrips), ", Type: ", typeof(honeyDrips)) end
+    return honeyDrips.Value
+end
+
+local function updatePlayerHoneyDrips(player, newAmount)
+    -- print("debugPrint status: ", typeof(debugPrint))
+    -- if debugPrint then debugPrint("updatePlayerHoneyDrips called for ", player.Name, ", newAmount: ", newAmount) end
+    local leaderstats = player:WaitForChild("leaderstats")
+    -- Ensure leaderstats is not nil before attempting to access .Name
+    if leaderstats then
+        -- print("debugPrint status: ", typeof(debugPrint))
+        -- if debugPrint then debugPrint("updatePlayerHoneyDrips: leaderstats found for ", player.Name, ": ", (leaderstats and leaderstats.Name or "nil"), ", Type: ", typeof(leaderstats)) end
+    else
+        warn("updatePlayerHoneyDrips: CRITICAL - leaderstats still nil after initialization for player: ", player.Name)
+        return -- Cannot proceed without leaderstats
+    end
+    local honeyDrips = leaderstats:FindFirstChild("HoneyDrips")
+    if not honeyDrips then
+        -- Create HoneyDrips stat if it doesn't exist
+        honeyDrips = Instance.new("IntValue")
+        honeyDrips.Name = "HoneyDrips"
+        honeyDrips.Value = 0
+        honeyDrips.Parent = leaderstats
+        -- print("debugPrint status: ", typeof(debugPrint))
+        -- if debugPrint then debugPrint("updatePlayerHoneyDrips: Created new HoneyDrips IntValue for ", player.Name) end
+    end
+    -- print("debugPrint status: ", typeof(debugPrint))
+    -- if debugPrint then debugPrint("updatePlayerHoneyDrips: Setting HoneyDrips value to ", newAmount, " for ", player.Name) end
     honeyDrips.Value = newAmount
 end
 
@@ -38,21 +115,9 @@ end
 
 print("Services initialized")
 
--- Debug control
-local Debug = true -- Set to true to enable debug prints
-
--- Debug print function
-local function debugPrint(...)
-    if Debug then
-        print(...)
-    end
-end
-
-debugPrint("Debug mode enabled")
-
 -- Audio Setup
 local buzSounds = {}
-for i = 1, 3 do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
+for i = 1, 2 do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_buz" .. (i > 1 and tostring(i) or ""))
     if sound then
         table.insert(buzSounds, sound)
@@ -60,7 +125,7 @@ for i = 1, 3 do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
         warn("Buz sound not found: robloxMoreBeesAudio_buz" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
     end
 end
-debugPrint("Found ", #buzSounds, " buz sounds.")
+-- debugPrint("Found ", #buzSounds, " buz sounds.")
 
 local stingSounds = {}
 for i = 1, 5 do -- Assuming robloxMoreBeesAudio_sting, _sting2, ..., _sting5
@@ -71,10 +136,10 @@ for i = 1, 5 do -- Assuming robloxMoreBeesAudio_sting, _sting2, ..., _sting5
         warn("Sting sound not found: robloxMoreBeesAudio_sting" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
     end
 end
-debugPrint("Found ", #stingSounds, " sting sounds.")
+-- debugPrint("Found ", #stingSounds, " sting sounds.")
 
 local honeyDripSounds = {}
-for i = 1, 3 do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
+for i = 1, 2 do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or ""))
     if sound then
         table.insert(honeyDripSounds, sound)
@@ -82,7 +147,7 @@ for i = 1, 3 do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
         warn("HoneyDrip sound not found: robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
     end
 end
-debugPrint("Found ", #honeyDripSounds, " HoneyDrip sounds.")
+-- debugPrint("Found ", #honeyDripSounds, " HoneyDrip sounds.")
 
 if #buzSounds == 0 then warn("No buz sounds found in ServerStorage!") end
 if #stingSounds == 0 then warn("No sting sounds found in ServerStorage!") end
@@ -101,7 +166,9 @@ local MAX_HONEYDRIPS = 20 -- Maximum number of HoneyDrips allowed in workspace
 local BASE_DRIP_SPAWN_INTERVAL = 10 -- Base interval in seconds for drips to spawn
 local DRIP_SPAWN_DECREASE_PER_BEE = 0.5 -- How much interval decreases per alive bee
 
-local HONEYDRIP_DROP_CHANCE = 50 -- 50% chance for a HoneyDrip to drop when a bee dies
+-- New constants for HoneyDrip drops from flying bees
+local FLYING_BEE_DRIP_CHANCE = 25 -- 25% chance for a HoneyDrip to drop from a flying bee per check
+local FLYING_BEE_DRIP_CHECK_INTERVAL = 10 -- seconds between drop checks for a flying bee
 
 local HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health HoneyDrip restores
 
@@ -109,10 +176,10 @@ local HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health HoneyDrip restores
 local MAX_CHASE_TIME = 5 -- seconds a bee can chase before getting tired
 local TIRED_SPEED_MULTIPLIER = 4 -- Multiplier for speed when tired (e.g., 1.5 means 1.5x slower)
 
-debugPrint("Before createHoneyDrip definition: createHoneyDrip is ", tostring(createHoneyDrip))
+-- debugPrint("Before createHoneyDrip definition: createHoneyDrip is ", tostring(createHoneyDrip))
 -- Function to create and spawn a HoneyDrip item near the BeeHive
 local function createHoneyDrip(initialPosition)
-    debugPrint("Attempting to create HoneyDrip...")
+    -- debugPrint("Attempting to create HoneyDrip...")
     
     -- Get the HoneyDrip template from ReplicatedStorage
     local honeyDripTemplate = ReplicatedStorage:FindFirstChild("HoneyDrip")
@@ -147,21 +214,21 @@ local function createHoneyDrip(initialPosition)
 
     newDrip.Position = spawnPosition -- Set position directly on the MeshPart
     newDrip.Parent = workspace
-    debugPrint("HoneyDrip created at ", tostring(spawnPosition), " with size ", tostring(newDrip.Size))
+    -- debugPrint("HoneyDrip created at ", tostring(spawnPosition), " with size ", tostring(newDrip.Size))
 
     -- Get the existing ProximityPrompt from the cloned HoneyDrip
     local prompt = newDrip:FindFirstChildOfClass("ProximityPrompt")
     if prompt then
-        debugPrint("Found existing ProximityPrompt on HoneyDrip")
+        -- debugPrint("Found existing ProximityPrompt on HoneyDrip (", newDrip.Name, ") with parent ", prompt.Parent.Name)
         -- Connect the Triggered event for the prompt
         prompt.Triggered:Connect(function(player)
-            debugPrint("HoneyDrip picked up by ", player.Name)
+            -- debugPrint("ProximityPrompt Triggered for HoneyDrip (", newDrip.Name, ") by ", player.Name, ". HoneyDrip parent: ", newDrip.Parent and newDrip.Parent.Name or "nil", ", Prompt parent: ", prompt.Parent and prompt.Parent.Name or "nil")
             local character = player.Character
             if character and character:FindFirstChildOfClass("Humanoid") then
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid.Health < humanoid.MaxHealth then
                     humanoid.Health = math.min(humanoid.Health + HEAL_AMOUNT_HONEYDRIP, humanoid.MaxHealth)
-                    debugPrint(player.Name, " healed by HoneyDrip. Current health:", humanoid.Health)
+                    -- debugPrint(player.Name, " healed by HoneyDrip. Current health:", humanoid.Health)
                     
                     -- Visual feedback: brief color flash
                     local originalColor = player.Character.HumanoidRootPart.BrickColor
@@ -171,33 +238,45 @@ local function createHoneyDrip(initialPosition)
                             player.Character.HumanoidRootPart.BrickColor = originalColor
                         end
                     end)
-
-                    -- Play HoneyDrip pickup sound
-                    if #honeyDripSounds > 0 then
-                        local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
-                        chosenDripSound.Parent = newDrip -- Parent to the picked up drip
-                        chosenDripSound.Volume = 0.7 -- Set a default volume
-                        debugPrint("Attempting to play HoneyDrip sound: ", chosenDripSound.Name)
-                        chosenDripSound:Play()
-                        game:GetService("Debris"):AddItem(chosenDripSound, chosenDripSound.TimeLength) -- Clean up sound after playing
-                    else
-                        warn("No HoneyDrip sounds available to play!")
-                    end
-
-                    -- Increment player's HoneyDrips stat using helper functions
-                    local currentHoneyDrips = getPlayerHoneyDrips(player)
-                    updatePlayerHoneyDrips(player, currentHoneyDrips + 1)
-                    debugPrint(player.Name, " collected a HoneyDrip. Total: ", currentHoneyDrips + 1)
-                else
-                    debugPrint(player.Name, " is already at full health. No healing needed.")
                 end
+
+                -- Play HoneyDrip pickup sound
+                if #honeyDripSounds > 0 then
+                    local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
+                    chosenDripSound.Parent = newDrip -- Parent to the picked up drip
+                    chosenDripSound.Volume = 0.7 -- Set a default volume
+                    -- debugPrint("Attempting to play HoneyDrip sound: ", chosenDripSound.Name)
+                    chosenDripSound:Play()
+                    game:GetService("Debris"):AddItem(chosenDripSound, chosenDripSound.TimeLength) -- Clean up sound after playing
+                else
+                    warn("No HoneyDrip sounds available to play!")
+                end
+
+                -- Increment player's HoneyDrips stat using helper functions
+                -- debugPrint("Calling updatePlayerHoneyDrips for ", player.Name, ". Current value: ", getPlayerHoneyDrips(player), " ...")
+                local currentHoneyDrips = getPlayerHoneyDrips(player)
+                
+                -- Get the value from the HoneyDrip model itself
+                local honeyDripValueObject = newDrip:FindFirstChild("DripAmount") -- Now looking for "DripAmount"
+                local amountToAdd = 1 -- Default to 1 if DripAmount object not found
+                if honeyDripValueObject and honeyDripValueObject:IsA("NumberValue") then
+                    amountToAdd = honeyDripValueObject.Value
+                    -- debugPrint("HoneyDrip (", newDrip.Name, ") has value of ", amountToAdd)
+                else
+                    warn("HoneyDrip (", newDrip.Name, ") does not have a 'DripAmount' NumberValue child or it's not a NumberValue. Defaulting to 1.")
+                end
+
+                updatePlayerHoneyDrips(player, currentHoneyDrips + amountToAdd)
+                -- debugPrint(player.Name, " collected a HoneyDrip. Total: ", getPlayerHoneyDrips(player))
+                
             else
                 warn("Player character or Humanoid not found for healing.")
             end
             
             -- Destroy the HoneyDrip after pickup
+            -- debugPrint("Destroying HoneyDrip (", newDrip.Name, ") after pickup. Waiting 0.1s.")
+            task.wait(0.1) -- Small delay to allow events to fully process
             newDrip:Destroy()
-            debugPrint("HoneyDrip destroyed after pickup.")
         end)
     else
         warn("No ProximityPrompt found on HoneyDrip template!")
@@ -245,15 +324,15 @@ local function getBeeCount()
             local isAliveValue = obj:FindFirstChild("IsAlive")
             if isAliveValue and isAliveValue.Value == 1 then
                 count = count + 1
-                debugPrint("getBeeCount: Counting alive bee ", obj.Name)
+                -- debugPrint("getBeeCount: Counting alive bee ", obj.Name)
             else
-                debugPrint("getBeeCount: Not counting bee ", obj.Name, ", IsAlive: ", isAliveValue and isAliveValue.Value or "nil")
+                -- debugPrint("getBeeCount: Not counting bee ", obj.Name, ", IsAlive: ", isAliveValue and isAliveValue.Value or "nil")
             end
         else
-            debugPrint("getBeeCount: Not a FlyingCube: ", obj.Name)
+            -- debugPrint("getBeeCount: Not a FlyingCube: ", obj.Name)
         end
     end
-    debugPrint("getBeeCount: Final count ", count)
+    -- debugPrint("getBeeCount: Final count ", count)
     return count
 end
 
@@ -261,12 +340,12 @@ end
 local function updateBeeCount()
     local count = getBeeCount()
     beeCountDisplay.Value = "Bees: " .. count
-    debugPrint("Updated bee count:", count)
+    -- debugPrint("Updated bee count:", count)
 end
 
 -- Function to create and spawn a flying bee that follows the closest player
 local function createFlyingCube(customColor)
-    debugPrint("Attempting to create flying bee...")
+    -- debugPrint("Attempting to create flying bee...")
     
     -- Get the bee model from ReplicatedStorage, as per your model's new location
     local beeModel = ReplicatedStorage:FindFirstChild("Bee")
@@ -307,19 +386,19 @@ local function createFlyingCube(customColor)
         if part:IsA("BasePart") then
             part.CollisionGroup = CUBE_COLLISION_GROUP
             part.Anchored = false -- Ensure bee parts are not anchored so BodyMovers can affect them
-            debugPrint("Bee part ", part.Name, " initial CanCollide: ", tostring(part.CanCollide))
+            -- debugPrint("Bee part ", part.Name, " initial CanCollide: ", tostring(part.CanCollide))
         end
     end
 
     -- Weld all parts of the bee model to its primary part to ensure it moves as a single unit
-    debugPrint("PrimaryPart '", primaryPart.Name, "' found for welding.")
+    -- debugPrint("PrimaryPart '", primaryPart.Name, "' found for welding.")
     for _, part in ipairs(bee:GetDescendants()) do
         if part:IsA("BasePart") and part ~= primaryPart then
             local weldConstraint = Instance.new("WeldConstraint")
             weldConstraint.Part0 = primaryPart
             weldConstraint.Part1 = part
             weldConstraint.Parent = part -- Parent to the child part
-            debugPrint("WeldConstraint created between ", primaryPart.Name, " and ", part.Name)
+            -- debugPrint("WeldConstraint created between ", primaryPart.Name, " and ", part.Name)
         end
     end
 
@@ -374,7 +453,7 @@ local function createFlyingCube(customColor)
     local spawnPosition = Vector3.new(0, 25, 0) -- Default spawn if BeeHive not found or no PrimaryPart
     local beeHive = workspace:FindFirstChild("BeeHive")
     if beeHive and beeHive:IsA("Model") then
-        debugPrint("BeeHive model found.")
+        -- debugPrint("BeeHive model found.")
         -- Assign BeeHive to its collision group (if it has parts)
         for _, part in ipairs(beeHive:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -382,7 +461,7 @@ local function createFlyingCube(customColor)
             end
         end
         if beeHive.PrimaryPart then
-            debugPrint("BeeHive PrimaryPart found.")
+            -- debugPrint("BeeHive PrimaryPart found.")
             -- Spawn at a random spot near the BeeHive PrimaryPart
             local randomOffset = Vector3.new(
                 math.random(-10, 10), -- X offset
@@ -399,7 +478,7 @@ local function createFlyingCube(customColor)
 
     -- Set the position of the entire model via its PrimaryPart
     bee:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
-    debugPrint("Flying bee created and parented to workspace at: " .. tostring(spawnPosition))
+    -- debugPrint("Flying bee created and parented to workspace at: " .. tostring(spawnPosition))
 
     -- Add BodyPosition and BodyGyro for flying
     local bodyPosition = Instance.new("BodyPosition")
@@ -408,7 +487,7 @@ local function createFlyingCube(customColor)
     bodyPosition.D = 1 * BODY_MOVER_MULTIPLIER
     bodyPosition.Position = primaryPart.Position
     bodyPosition.Parent = primaryPart
-    debugPrint("BodyPosition created and parented to ", primaryPart.Name)
+    -- debugPrint("BodyPosition created and parented to ", primaryPart.Name)
 
     local bodyGyro = Instance.new("BodyGyro")
     bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
@@ -416,7 +495,7 @@ local function createFlyingCube(customColor)
     bodyGyro.D = 1 * BODY_MOVER_MULTIPLIER
     bodyGyro.CFrame = primaryPart.CFrame
     bodyGyro.Parent = primaryPart
-    debugPrint("BodyGyro created and parented to ", primaryPart.Name)
+    -- debugPrint("BodyGyro created and parented to ", primaryPart.Name)
 
     -- Function to find the closest player
     local function getClosestPlayer()
@@ -450,6 +529,9 @@ local function createFlyingCube(customColor)
     local connection
     local angerLevel = 0
     local isAngry = false
+
+    -- New local variable for tracking drip drop time
+    local lastDripDropAttemptTime = 0
 
     connection = RunService.Heartbeat:Connect(function(dt)
         if not bee.Parent then
@@ -485,7 +567,7 @@ local function createFlyingCube(customColor)
         local currentSpeedMultiplier = 1.0
         if chaseTime <= 0 then -- Bee is tired when stamina is 0 or less
             currentSpeedMultiplier = TIRED_SPEED_MULTIPLIER
-            debugPrint("Bee " .. bee.Name .. " is tired! Speed multiplier: ", currentSpeedMultiplier)
+            -- debugPrint("Bee " .. bee.Name .. " is tired! Speed multiplier: ", currentSpeedMultiplier)
         end
 
         -- Apply speed multiplier to body movers
@@ -542,6 +624,16 @@ local function createFlyingCube(customColor)
 
         bodyPosition.Position = currentTargetPos
         bodyGyro.CFrame = CFrame.lookAt(primaryPart.Position, currentTargetPos)
+
+        -- Check for HoneyDrip drop from flying bee
+        local now = tick()
+        if now - lastDripDropAttemptTime > FLYING_BEE_DRIP_CHECK_INTERVAL then
+            lastDripDropAttemptTime = now
+            if math.random(1, 100) <= FLYING_BEE_DRIP_CHANCE then
+                -- debugPrint("HoneyDrip dropped from flying bee")
+                createHoneyDrip(primaryPart.Position)
+            end
+        end
     end)
 
     -- Damage logic: sting player on touch
@@ -557,18 +649,18 @@ local function createFlyingCube(customColor)
             if player then
                 -- Check if player has Bee Shield power-up
                 if player:GetAttribute("BeeShield") then
-                    debugPrint("Player has Bee Shield, no damage applied")
+                    -- debugPrint("Player has Bee Shield, no damage applied")
                     return
                 end
 
-                debugPrint("Bee touched player:", player.Name)
+                -- debugPrint("Bee touched player:", player.Name)
                 local now = tick()
                 local lastSting = lastStingTimes[player] or 0
                 if now - lastSting > 1 then
                     lastStingTimes[player] = now
                     local humanoid = character:FindFirstChild("Humanoid")
                     if humanoid and humanoid.Health > 0 then
-                        debugPrint("Stinging player for 20 damage!")
+                        -- debugPrint("Stinging player for 20 damage!")
                         humanoid:TakeDamage(20)
 
                         -- Play sting sound
@@ -576,7 +668,7 @@ local function createFlyingCube(customColor)
                             local chosenStingSound = stingSounds[math.random(1, #stingSounds)]:Clone()
                             chosenStingSound.Parent = primaryPart -- Play sound from bee's location
                             chosenStingSound.Playing = true -- Play immediately
-                            game:GetService("Debris"):AddItem(chosenStingSound, chosenStingSound.TimeLength + 1) -- Clean up sound
+                            game:GetService("Debris"):AddItem(chosenStingSound, chosenStingSound.TimeLength + 1) -- Clean up sound after playing
                         end
 
                         -- Stop buz sound if it exists
@@ -640,15 +732,6 @@ local function createFlyingCube(customColor)
                                 end
                             end
                         end)
-
-                        -- Chance to drop a HoneyDrip when the bee dies
-                        if math.random(1, 100) <= HONEYDRIP_DROP_CHANCE then
-                            debugPrint("Before calling createHoneyDrip: createHoneyDrip is ", tostring(createHoneyDrip))
-                            local droppedDrip = createHoneyDrip(primaryPart.Position) -- Pass the bee's position
-                            if droppedDrip then
-                                debugPrint("HoneyDrip dropped from bee at ", tostring(primaryPart.Position))
-                            end
-                        end
                     end
                 end
             end
@@ -673,7 +756,7 @@ local function getPlayerScore(player)
         scoreValue.Parent = scoresFolder
         
         -- Create a StringValue for the leaderboard
-        local leaderboardValue = Instance.new("StringValue")
+        local leaderboardValue = Instance.new("Folder") -- Changed from StringValue to Folder
         leaderboardValue.Name = "leaderstats"
         leaderboardValue.Parent = player
         
@@ -698,7 +781,7 @@ local function updatePlayerScore(player, newScore)
                 scoreStat.Value = tostring(newScore) .. "s"
             end
         end
-        debugPrint("New high score for", player.Name, ":", newScore)
+        -- debugPrint("New high score for", player.Name, ":", newScore)
     end
 end
 
@@ -708,7 +791,7 @@ local function onPlayerAdded(player)
     local lastUpdate = tick()
     
     -- Create leaderboard for new players
-    local leaderboardValue = Instance.new("StringValue")
+    local leaderboardValue = Instance.new("Folder") -- Changed from StringValue to Folder
     leaderboardValue.Name = "leaderstats"
     leaderboardValue.Parent = player
     
@@ -728,6 +811,9 @@ local function onPlayerAdded(player)
         local humanoid = character:WaitForChild("Humanoid")
         currentScore = 0
         lastUpdate = tick()
+        if DEBUG then
+            setDebugHoneyDrips(player)
+        end
         
         -- Set player character parts to the PlayerGroup collision group
         for _, part in ipairs(character:GetDescendants()) do
@@ -757,6 +843,13 @@ local function onPlayerAdded(player)
             if connection then
                 connection:Disconnect()
             end
+            -- Reset HoneyDrips
+            updatePlayerHoneyDrips(player, 0)
+            -- Remove all active effects
+            humanoid.WalkSpeed = 16 -- default WalkSpeed
+            humanoid.MaxHealth = 100 -- default MaxHealth
+            player:SetAttribute("BeeShield", false)
+            -- Optionally, fire PowerUpEndedEvent for all power-ups to the client here
         end)
     end)
     
@@ -805,10 +898,10 @@ local function startAutoSpawner()
         
         -- Always spawn if below minimum, otherwise spawn at max interval
         if currentBees < MAX_HONEYDRIPS then
-            debugPrint("Auto-spawning bee. Current:", currentBees, "Minimum Required:", minRequiredBees, "Interval:", spawnInterval)
+            -- debugPrint("Auto-spawning bee. Current:", currentBees, "Minimum Required:", minRequiredBees, "Interval:", spawnInterval)
             createFlyingCube()
         else
-            debugPrint("Maintaining minimum. Current:", currentBees, "Minimum Required:", minRequiredBees, "Spawning at:", spawnInterval, "seconds")
+            -- debugPrint("Maintaining minimum. Current:", currentBees, "Minimum Required:", minRequiredBees, "Spawning at:", spawnInterval, "seconds")
             createFlyingCube()
         end
         
@@ -829,7 +922,7 @@ end)
 -- Listen for bees being removed from the workspace to update the count immediately
 workspace.ChildRemoved:Connect(function(child)
     if child.Name == "FlyingCube" then
-        debugPrint("Bee removed from workspace, updating count")
+        -- debugPrint("Bee removed from workspace, updating count")
         updateBeeCount()
     end
 end)
@@ -847,9 +940,20 @@ local function spawnMultipleBees(count, color)
         end)
     end
     updateBeeCount()
-    debugPrint("Spawned", count, "bees via request!")
+    -- debugPrint("Spawned", count, "bees via request!")
 end
 
 -- Connect the BindableEvent to the spawning function
 SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
 SpawnBeesRequestEvent.Event:Connect(spawnMultipleBees)
+
+-- Add RemoteEvent for client respawn requests
+local requestRespawnEvent = Instance.new("RemoteEvent")
+requestRespawnEvent.Name = "RequestRespawnEvent"
+requestRespawnEvent.Parent = ReplicatedStorage
+
+requestRespawnEvent.OnServerEvent:Connect(function(player)
+    if player and player:IsA("Player") then
+        player:LoadCharacter()
+    end
+end)

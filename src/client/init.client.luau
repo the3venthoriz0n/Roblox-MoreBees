@@ -58,7 +58,13 @@ local function showRespawnTimer()
                     respawnConnection = nil
                 end
                 -- Request respawn
-                player:LoadCharacter()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local requestRespawnEvent = ReplicatedStorage:FindFirstChild("RequestRespawnEvent")
+                if requestRespawnEvent then
+                    requestRespawnEvent:FireServer()
+                else
+                    warn("RequestRespawnEvent not found in ReplicatedStorage!")
+                end
                 task.wait(0.5)
                 if respawnGui then 
                     respawnGui:Destroy()
