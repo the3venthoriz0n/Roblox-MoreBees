@@ -124,70 +124,55 @@ local function createHoneyDrip(initialPosition)
     newDrip.Parent = workspace
     -- debugPrint("HoneyDrip created at ", tostring(spawnPosition), " with size ", tostring(newDrip.Size))
 
-    -- Get the existing ProximityPrompt from the cloned HoneyDrip
-    local prompt = newDrip:FindFirstChildOfClass("ProximityPrompt")
-    if prompt then
-        -- debugPrint("Found existing ProximityPrompt on HoneyDrip (", newDrip.Name, ") with parent ", prompt.Parent.Name)
-        -- Connect the Triggered event for the prompt
-        prompt.Triggered:Connect(function(player)
-            -- debugPrint("ProximityPrompt Triggered for HoneyDrip (", newDrip.Name, ") by ", player.Name, ". HoneyDrip parent: ", newDrip.Parent and newDrip.Parent.Name or "nil", ", Prompt parent: ", prompt.Parent and prompt.Parent.Name or "nil")
-            local character = player.Character
-            if character and character:FindFirstChildOfClass("Humanoid") then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid.Health < humanoid.MaxHealth then
-                    humanoid.Health = math.min(humanoid.Health + GameConfig.HEAL_AMOUNT_HONEYDRIP, humanoid.MaxHealth)
-                    -- debugPrint(player.Name, " healed by HoneyDrip. Current health:", humanoid.Health)
-                    
-                    -- Visual feedback: brief color flash
-                    local originalColor = player.Character.HumanoidRootPart.BrickColor
-                    player.Character.HumanoidRootPart.BrickColor = BrickColor.new(GameConfig.HEAL_FLASH_COLOR)
-                    task.delay(GameConfig.HEAL_FLASH_DURATION, function() -- Flash for configured duration
-                        if player.Character and player.Character.HumanoidRootPart then
-                            player.Character.HumanoidRootPart.BrickColor = originalColor
-                        end
-                    end)
-                end
+    -- Create touch detection for HoneyDrip pickup
+    local function handleHoneyDripPickup(hitPart)
+        local character = hitPart.Parent
+        if not character then return end
+        
+        local player = Players:GetPlayerFromCharacter(character)
+        if not player then return end
+        
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        
+        -- Prevent multiple pickups
+        if newDrip:FindFirstChild("BeingPickedUp") then return end
+        local pickupFlag = Instance.new("BoolValue")
+        pickupFlag.Name = "BeingPickedUp"
+        pickupFlag.Value = true
+        pickupFlag.Parent = newDrip
+        
+        -- Heal player if needed
+        if humanoid.Health < humanoid.MaxHealth then
+            humanoid.Health = math.min(humanoid.Health + GameConfig.HEAL_AMOUNT_HONEYDRIP, humanoid.MaxHealth)
+        end
 
-                -- Play HoneyDrip pickup sound
-                if #honeyDripSounds > 0 then
-                    local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
-                    chosenDripSound.Parent = newDrip -- Parent to the picked up drip
-                    chosenDripSound.Volume = GameConfig.SOUND_VOLUME -- Set volume from config
-                    -- debugPrint("Attempting to play HoneyDrip sound: ", chosenDripSound.Name)
-                    chosenDripSound:Play()
-                    game:GetService("Debris"):AddItem(chosenDripSound, chosenDripSound.TimeLength) -- Clean up sound after playing
-                else
-                    warn("No HoneyDrip sounds available to play!")
-                end
+        -- Play HoneyDrip pickup sound
+        if #honeyDripSounds > 0 then
+            local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
+            chosenDripSound.Parent = newDrip
+            chosenDripSound.Volume = GameConfig.SOUND_VOLUME
+            chosenDripSound:Play()
+            game:GetService("Debris"):AddItem(chosenDripSound, chosenDripSound.TimeLength)
+        end
 
-                -- Use PlayerDataManager module
-                local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
-                
-                -- Get the value from the HoneyDrip model itself
-                local honeyDripValueObject = newDrip:FindFirstChild("DripAmount") -- Now looking for "DripAmount"
-                local amountToAdd = GameConfig.DEFAULT_HONEYDRIP_AMOUNT -- Default to config value if DripAmount object not found
-                if honeyDripValueObject and honeyDripValueObject:IsA("NumberValue") then
-                    amountToAdd = honeyDripValueObject.Value
-                    -- debugPrint("HoneyDrip (", newDrip.Name, ") has value of ", amountToAdd)
-                else
-                    warn("HoneyDrip (", newDrip.Name, ") does not have a 'DripAmount' NumberValue child or it's not a NumberValue. Defaulting to 1.")
-                end
+        -- Add HoneyDrips to player
+        local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
+        local honeyDripValueObject = newDrip:FindFirstChild("DripAmount")
+        local amountToAdd = GameConfig.DEFAULT_HONEYDRIP_AMOUNT
+        if honeyDripValueObject and honeyDripValueObject:IsA("NumberValue") then
+            amountToAdd = honeyDripValueObject.Value
+        end
 
-                -- Use PlayerDataManager module
-                PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips + amountToAdd)
-                
-            else
-                warn("Player character or Humanoid not found for healing.")
-            end
-            
-            -- Destroy the HoneyDrip after pickup
-            -- debugPrint("Destroying HoneyDrip (", newDrip.Name, ") after pickup. Waiting configured delay.")
-            task.wait(GameConfig.HONEYDRIP_PICKUP_DELAY) -- Small delay to allow events to fully process
-            newDrip:Destroy()
-        end)
-    else
-        warn("No ProximityPrompt found on HoneyDrip template!")
+        PlayerDataManager.updatePlayerHoneyDrips(player, currentHoneyDrips + amountToAdd)
+        
+        -- Destroy the HoneyDrip after pickup
+        task.wait(GameConfig.HONEYDRIP_PICKUP_DELAY)
+        newDrip:Destroy()
     end
+    
+    -- Connect touch event to the HoneyDrip
+    newDrip.Touched:Connect(handleHoneyDripPickup)
 
     return newDrip
 end
