@@ -1,16 +1,16 @@
-print("Hello world, from Rojo Server OG!")
-
+-- Variable definitions
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
-local ServerStorage = game:GetService("ServerStorage") -- Get ServerStorage
-
--- Require Modules
+local ServerStorage = game:GetService("ServerStorage")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
-
+local SoundsFolder = ServerStorage:FindFirstChild("Sounds")
+local buzSounds = {}
+local stingSounds = {}
+local honeyDripSounds = {}
 
 -- Initialize 
 PlayerDataManager.initialize()
@@ -36,7 +36,6 @@ end
 
 
 
-local SoundsFolder = ServerStorage:FindFirstChild("Sounds")
 if not SoundsFolder then
     warn("Sounds folder not found in ServerStorage. Please ensure your audio assets are placed in ServerStorage/Sounds.")
     -- Create a dummy folder or handle gracefully if sounds are missing
@@ -48,7 +47,6 @@ end
 print("Services initialized")
 
 -- Audio Setup
-local buzSounds = {}
 for i = 1, GameConfig.BUZ_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_buz" .. (i > 1 and tostring(i) or ""))
     if sound then
@@ -59,7 +57,6 @@ for i = 1, GameConfig.BUZ_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_buz, _b
 end
 -- debugPrint("Found ", #buzSounds, " buz sounds.")
 
-local stingSounds = {}
 for i = 1, GameConfig.STING_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_sting, _sting2, ..., _sting5
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_sting" .. (i > 1 and tostring(i) or ""))
     if sound then
@@ -70,7 +67,6 @@ for i = 1, GameConfig.STING_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_sting
 end
 -- debugPrint("Found ", #stingSounds, " sting sounds.")
 
-local honeyDripSounds = {}
 for i = 1, GameConfig.HONEYDRIP_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
     local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or ""))
     if sound then

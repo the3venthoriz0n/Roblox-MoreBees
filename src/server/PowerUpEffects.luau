@@ -1,15 +1,11 @@
+-- Variable definitions
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- Require GameConfig for constants
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local RemoteEventsManager = require(game.ServerScriptService.Server.RemoteEventsManager)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
-
 local PowerUpEffects = {}
-
--- Table to track effect end times and running timers per player
 local activeEffects = {} -- [player][effectName] = {endTime = number, running = bool}
 
 local function getPlayer(character)

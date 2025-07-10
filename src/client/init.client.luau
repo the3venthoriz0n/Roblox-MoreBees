@@ -1,6 +1,3 @@
-local StarterGui = game:GetService("StarterGui")
-StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
-
 print("Client script loaded Rojo OG!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,10 +8,37 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- Wait for MainUI and WelcomeMessage to exist
 local mainUI = playerGui:WaitForChild("MainUI")
 local welcomeMessage = mainUI:WaitForChild("WelcomeMessage")
+local StarterGui = game:GetService("StarterGui")
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
+
+
+-- Variable definitions
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local counterGui = playerGui:WaitForChild("CounterGui")
+local beeCounterLabel = counterGui:WaitForChild("BeeCounter")
+local honeyDripLabel = counterGui:WaitForChild("HoneyDripCount")
+
+
+
+-- Consolidated UI positioning for all counters/messages
+beeCounterLabel.AnchorPoint = Vector2.new(0.5, 0)
+beeCounterLabel.Position = UDim2.new(0.5, 0, 0, 0)
+beeCounterLabel.TextXAlignment = Enum.TextXAlignment.Center
+beeCounterLabel.TextYAlignment = Enum.TextYAlignment.Top
+beeCounterLabel.Size = UDim2.new(0, 200, 0, 40)
+
+honeyDripLabel.AnchorPoint = Vector2.new(0.5, 0)
+honeyDripLabel.Position = UDim2.new(0.5, 0, 0, 45) -- 45 pixels below beeCounterLabel
+honeyDripLabel.TextXAlignment = Enum.TextXAlignment.Center
+honeyDripLabel.TextYAlignment = Enum.TextYAlignment.Top
+honeyDripLabel.Size = UDim2.new(0, 200, 0, 40)
 
 -- Center the message
 welcomeMessage.AnchorPoint = Vector2.new(0.5, 0.5)
 welcomeMessage.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+
 
 -- Show the message
 welcomeMessage.Visible = true
@@ -109,43 +133,36 @@ player.CharacterAdded:Connect(function(character)
     end)
 end)
 
--- Create GUI for bee count display
-local function createBeeCountDisplayGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "BeeCountDisplayGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
+-- Remove old MainUI bee/honey counter references
+-- Only use CounterGui for bee and honey drip counters
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local counterGui = playerGui:WaitForChild("CounterGui")
+local beeCounterLabel = counterGui:WaitForChild("BeeCounter")
+local honeyDripLabel = counterGui:WaitForChild("HoneyDripCount")
 
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0, 200, 0, 50)
-    label.Position = UDim2.new(0.5, -100, 0.1, 0) -- Position at top center
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.new(1, 1, 1) -- White text
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-    label.Text = "Bees: 0"
-    label.Parent = screenGui
-
-    -- Listen for changes in the server's BeeCountDisplay value
-    local beeCountDisplay = ReplicatedStorage:WaitForChild("BeeCountDisplay")
-    beeCountDisplay.Changed:Connect(function(value)
-        label.Text = value
-    end)
-
-    -- Set initial value
-    label.Text = beeCountDisplay.Value
-end
-
--- Only create if not already present
-if not player:WaitForChild("PlayerGui"):FindFirstChild("BeeCountDisplayGui") then
-    createBeeCountDisplayGui()
-end
-
-player.CharacterAdded:Connect(function()
-    local beeGui = player:WaitForChild("PlayerGui"):FindFirstChild("BeeCountDisplayGui")
-    if not beeGui then
-        createBeeCountDisplayGui()
-    else
-        beeGui.Parent = player:WaitForChild("PlayerGui")
-    end
+local beeCountDisplay = game:GetService("ReplicatedStorage"):WaitForChild("BeeCountDisplay")
+beeCounterLabel.Text = beeCountDisplay.Value
+beeCountDisplay.Changed:Connect(function(value)
+    beeCounterLabel.Text = value
 end)
+
+-- Function to update the label
+local function updateHoneyDripCount()
+    local leaderstats = player:WaitForChild("leaderstats")
+    local honeyDrips = leaderstats:WaitForChild("HoneyDrips")
+    honeyDripLabel.Text = "Honey Drips: " .. tostring(honeyDrips.Value)
+    honeyDrips.Changed:Connect(function(newValue)
+        honeyDripLabel.Text = "Honey Drips: " .. tostring(newValue)
+    end)
+end
+
+if player:FindFirstChild("leaderstats") then
+    updateHoneyDripCount()
+else
+    player.ChildAdded:Connect(function(child)
+        if child.Name == "leaderstats" then
+            updateHoneyDripCount()
+        end
+    end)
+end
