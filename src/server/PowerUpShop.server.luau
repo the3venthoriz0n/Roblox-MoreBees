@@ -65,6 +65,37 @@ end
 -- Load modules immediately
 loadModules()
 
+-- Ensure remote events are created before proceeding
+local function ensureRemoteEventsExist()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local requiredEvents = {
+        "PowerUpShopEvent",
+        "PurchaseFeedbackEvent", 
+        "PowerUpActiveEvent",
+        "PowerUpEndedEvent"
+    }
+    
+    for _, eventName in ipairs(requiredEvents) do
+        local event = ReplicatedStorage:FindFirstChild(eventName)
+        if not event then
+            print("[DEBUG] Waiting for remote event to be created:", eventName)
+            event = ReplicatedStorage:WaitForChild(eventName, 10)
+            if not event then
+                warn("Failed to find remote event:", eventName)
+                return false
+            end
+        end
+    end
+    
+    print("[DEBUG] All required remote events are available")
+    return true
+end
+
+-- Wait for remote events to be created
+if not ensureRemoteEventsExist() then
+    warn("Failed to ensure remote events exist, PowerUpShop may not work properly")
+end
+
 local function logDebug(...)
     if GameConfig and GameConfig.LOG_LEVEL == "debug" then
         print("[DEBUG][PowerUpShop.server]", ...)
@@ -151,6 +182,16 @@ local function handleShopPurchase(player, powerUpIndex)
         return
     end
     
+    -- Ensure all required modules are available
+    if not PlayerDataManager or not RemoteEventsManager then
+        warn("Required modules not available for shop purchase, reloading...")
+        loadModules()
+        if not PlayerDataManager or not RemoteEventsManager then
+            warn("Failed to load required modules for shop purchase")
+            return
+        end
+    end
+    
     safeExecute("handleShopPurchase", function()
         local character = player.Character
         if not character then
@@ -213,12 +254,39 @@ local function handleShopPurchase(player, powerUpIndex)
     end)
 end
 
--- Connect to remote event with redundancy
-local connection = RemoteEventsManager.connectToEvent("PowerUpShopEvent", handleShopPurchase)
-if connection then
-    print("[DEBUG] Successfully connected to PowerUpShopEvent")
-else
-    warn("Failed to connect to PowerUpShopEvent")
+-- Connect to remote event with redundancy and retry logic
+local function connectToShopEvent()
+    if not RemoteEventsManager then
+        warn("RemoteEventsManager not available for shop event connection")
+        return false
+    end
+    
+    local connection = RemoteEventsManager.connectToEvent("PowerUpShopEvent", handleShopPurchase)
+    if connection then
+        print("[DEBUG] Successfully connected to PowerUpShopEvent")
+        return true
+    else
+        warn("Failed to connect to PowerUpShopEvent")
+        return false
+    end
+end
+
+-- Try to connect with retry logic
+local maxRetries = 5
+local retryCount = 0
+while retryCount < maxRetries do
+    if connectToShopEvent() then
+        break
+    else
+        retryCount = retryCount + 1
+        print("[DEBUG] Failed to connect to shop event, retrying... (", retryCount, "/", maxRetries, ")")
+        task.wait(1) -- Wait before retry
+        loadModules() -- Reload modules before retry
+    end
+end
+
+if retryCount >= maxRetries then
+    warn("[DEBUG] Failed to connect to shop event after", maxRetries, "attempts")
 end
 
 -- Track processed receipts to prevent duplicate processing

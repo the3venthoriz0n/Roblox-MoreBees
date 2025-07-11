@@ -3,7 +3,7 @@ local GameConfig = {}
 -- ============================================================================
 -- DEBUG SETTINGS
 -- ============================================================================
-GameConfig.DEBUG = false
+GameConfig.DEBUG = true
 GameConfig.LOG_LEVEL = "warn" -- "debug", "info", "warn", "error"
 GameConfig.DEBUG_HONEY_DRIPS_VALUE = 100
 GameConfig.RUN_TESTS = false -- Set to false to disable unit tests in production
@@ -42,7 +42,7 @@ GameConfig.BEE_LIFESPAN_VARIANCE = 15 -- Random variance in seconds (±15 second
 GameConfig.MAX_CHASE_TIME = 5 -- seconds a bee can chase before getting tired
 GameConfig.TIRED_SPEED_MULTIPLIER = 4 -- Multiplier for speed when tired (e.g., 1.5 means 1.5x slower)
 GameConfig.AGRAVATION_RADIUS = 25 -- Bees will only attack if player is within 25 studs
-GameConfig.WANDER_RADIUS = 100 -- How far bees can wander from the center
+GameConfig.WANDER_RADIUS = 160 -- How far bees can wander from the center
 
 -- ============================================================================
 -- BEE PHYSICS SETTINGS
