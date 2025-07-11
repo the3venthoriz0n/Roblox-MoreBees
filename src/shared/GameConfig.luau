@@ -40,7 +40,7 @@ GameConfig.BEE_LIFESPAN_VARIANCE = 15 -- Random variance in seconds (±15 second
 -- BEE BEHAVIOR SETTINGS
 -- ============================================================================
 GameConfig.MAX_CHASE_TIME = 5 -- seconds a bee can chase before getting tired
-GameConfig.TIRED_SPEED_MULTIPLIER = 4 -- Multiplier for speed when tired (e.g., 1.5 means 1.5x slower)
+GameConfig.TIRED_SPEED_MULTIPLIER = 3.5 -- Multiplier for speed when tired (e.g., 1.5 means 1.5x slower)
 GameConfig.AGRAVATION_RADIUS = 25 -- Bees will only attack if player is within 25 studs
 GameConfig.WANDER_RADIUS = 160 -- How far bees can wander from the center
 
@@ -62,11 +62,12 @@ GameConfig.BEE_DEAD_VALUE = 0 -- Value for dead bee state
 -- ============================================================================
 -- HONEYDRIP SETTINGS
 -- ============================================================================
-GameConfig.MAX_HONEYDRIPS = 20 -- Maximum number of HoneyDrips allowed in workspace
-GameConfig.BASE_DRIP_SPAWN_INTERVAL = 10 -- Base interval in seconds for drips to spawn
-GameConfig.DRIP_SPAWN_DECREASE_PER_BEE = 0.5 -- How much interval decreases per alive bee
-GameConfig.FLYING_BEE_DRIP_CHANCE = 25 -- 25% chance for a HoneyDrip to drop from a flying bee per check
-GameConfig.FLYING_BEE_DRIP_CHECK_INTERVAL = 10 -- seconds between drop checks for a flying bee
+GameConfig.BASE_MAX_HONEYDRIPS = 10 -- Base maximum number of HoneyDrips (minimum)
+GameConfig.HONEYDRIP_PER_BEE_MULTIPLIER = 0.3 -- Additional honey drips per alive bee
+GameConfig.BASE_DRIP_SPAWN_INTERVAL = 15 -- Base interval in seconds for drips to spawn
+GameConfig.DRIP_SPAWN_DECREASE_PER_BEE = 0.2 -- How much interval decreases per alive bee
+GameConfig.FLYING_BEE_DRIP_CHANCE = 5 -- 5% chance for a HoneyDrip to drop from a flying bee per check
+GameConfig.FLYING_BEE_DRIP_CHECK_INTERVAL = 15 -- seconds between drop checks for a flying bee
 GameConfig.HEAL_AMOUNT_HONEYDRIP = 25 -- Amount of health HoneyDrip restores
 GameConfig.DEFAULT_HONEYDRIP_AMOUNT = 1 -- Default HoneyDrip amount if DripAmount object not found
 

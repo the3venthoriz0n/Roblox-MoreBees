@@ -236,6 +236,24 @@ local function getBeeCount()
     return count
 end
 
+-- Function to calculate dynamic maximum honey drips based on alive bees
+local function getMaxHoneyDrips()
+    local aliveBees = getBeeCount()
+    local maxDrips = GameConfig.BASE_MAX_HONEYDRIPS + (aliveBees * GameConfig.HONEYDRIP_PER_BEE_MULTIPLIER)
+    return math.floor(maxDrips) -- Ensure it's a whole number
+end
+
+-- Function to get current honey drip count
+local function getHoneyDripCount()
+    local count = 0
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj.Name == "HoneyDrip" then
+            count = count + 1
+        end
+    end
+    return count
+end
+
 -- Function to update bee count display
 local function updateBeeCount()
     local count = getBeeCount()
@@ -244,7 +262,7 @@ local function updateBeeCount()
 end
 
 -- Shared bee death function
-local function killBee(bee, isAlive, connection, bodyPosition, bodyGyro, staminaGui, buzSound, deathReason)
+local function killBee(bee, isAlive, connection, bodyPosition, bodyGyro, staminaGui, buzSound, touchedConnection, deathReason)
     if isAlive.Value ~= GameConfig.BEE_ALIVE_VALUE then
         return -- Bee is already dead
     end
@@ -269,6 +287,12 @@ local function killBee(bee, isAlive, connection, bodyPosition, bodyGyro, stamina
     if staminaGui then 
         staminaGui:Destroy() 
         staminaGui = nil
+    end
+    
+    -- Disconnect touch event to prevent dead bees from stinging
+    if touchedConnection then
+        touchedConnection:Disconnect()
+        touchedConnection = nil
     end
     
     -- Stop buz sound
@@ -460,7 +484,7 @@ local function createFlyingCube(customColor)
                         bodyGyro = primaryPart:FindFirstChild("BodyGyro")
                     end
                     
-                    killBee(bee, isAlive, nil, bodyPosition, bodyGyro, staminaGui, buzSound, "old age after " .. math.floor(elapsed) .. " seconds")
+                    killBee(bee, isAlive, nil, bodyPosition, bodyGyro, staminaGui, buzSound, touchedConnection, "old age after " .. math.floor(elapsed) .. " seconds")
                 end
                 break
             end
@@ -682,12 +706,14 @@ local function createFlyingCube(customColor)
         bodyPosition.Position = currentTargetPos
         bodyGyro.CFrame = CFrame.lookAt(primaryPart.Position, currentTargetPos)
 
-        -- Check for HoneyDrip drop from flying bee - ONLY if bee is alive
+        -- Check for HoneyDrip drop from flying bee - ONLY if bee is alive and below maximum
         local now = tick()
         if now - lastDripDropAttemptTime > GameConfig.FLYING_BEE_DRIP_CHECK_INTERVAL then
             lastDripDropAttemptTime = now
-            if math.random(1, 100) <= GameConfig.FLYING_BEE_DRIP_CHANCE then
-                -- debugPrint("HoneyDrip dropped from flying bee")
+            local currentDrips = getHoneyDripCount()
+            local maxDrips = getMaxHoneyDrips()
+            if currentDrips < maxDrips and math.random(1, 100) <= GameConfig.FLYING_BEE_DRIP_CHANCE then
+                print("[HONEY DRIP] Bee dropped honey drip at position:", primaryPart.Position, "Current:", currentDrips, "/", maxDrips)
                 createHoneyDrip(primaryPart.Position)
             end
         end
@@ -695,10 +721,13 @@ local function createFlyingCube(customColor)
 
     -- Damage logic: sting player on touch
     local lastStingTimes = {}
-    local isBeeDead = false
+    local touchedConnection = nil
 
-    primaryPart.Touched:Connect(function(hit)
-        if isBeeDead then return end
+    touchedConnection = primaryPart.Touched:Connect(function(hit)
+        -- Check if bee is still alive using the isAlive value
+        if isAlive.Value ~= GameConfig.BEE_ALIVE_VALUE then
+            return -- Bee is dead, don't sting
+        end
 
         local character = hit.Parent
         if character and character:FindFirstChild("Humanoid") then
@@ -729,8 +758,7 @@ local function createFlyingCube(customColor)
                         end
 
                         -- Mark bee as dead from stinging
-                        isBeeDead = true
-                        killBee(bee, isAlive, connection, bodyPosition, bodyGyro, staminaGui, buzSound, "stinging player")
+                        killBee(bee, isAlive, connection, bodyPosition, bodyGyro, staminaGui, buzSound, touchedConnection, "stinging player")
                     end
                 end
             end
@@ -795,35 +823,26 @@ local function startAutoSpawner()
     end
 end
 
--- Function to get current honey drip count
-local function getHoneyDripCount()
-    local count = 0
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj.Name == "HoneyDrip" then
-            count = count + 1
-        end
-    end
-    return count
-end
-
 -- Automatic honey drip spawner
 local function startHoneyDripSpawner()
     while true do
         local currentDrips = getHoneyDripCount()
+        local maxDrips = getMaxHoneyDrips()
         
         -- Only spawn if below maximum
-        if currentDrips < GameConfig.MAX_HONEYDRIPS then
+        if currentDrips < maxDrips then
             -- Calculate spawn interval based on current bee count
             local currentBees = getBeeCount()
             local spawnInterval = GameConfig.BASE_DRIP_SPAWN_INTERVAL - (currentBees * GameConfig.DRIP_SPAWN_DECREASE_PER_BEE)
             spawnInterval = math.max(spawnInterval, 1) -- Minimum 1 second interval
             
-            -- debugPrint("Spawning honey drip. Current:", currentDrips, "Max:", GameConfig.MAX_HONEYDRIPS, "Interval:", spawnInterval)
+            print("[HONEY DRIP] Auto-spawning honey drip. Current:", currentDrips, "Max:", maxDrips, "Bees:", currentBees, "Interval:", spawnInterval)
             createHoneyDrip()
             
             task.wait(spawnInterval)
         else
             -- Wait a bit before checking again if at maximum
+            print("[HONEY DRIP] At maximum honey drips:", currentDrips, "/", maxDrips)
             task.wait(5)
         end
     end
