@@ -1,9 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger = require(script.Parent.Logger)
 
 local RemoteEventsManager = {}
 
 local function logDebug(...)
-    print("[DEBUG][RemoteEventsManager]", ...)
+    Logger.debug("[RemoteEventsManager]", ...)
 end
 
 -- Create all remote events

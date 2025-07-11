@@ -7,6 +7,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local ShopConfig = nil
 local PowerUpEffects = nil
 local GameConfig = nil
+local Logger = nil
 local PlayerDataManager = nil
 local RemoteEventsManager = nil
 
@@ -39,6 +40,16 @@ local function loadModules()
     else
         warn("Failed to load GameConfig:", result)
         GameConfig = nil
+    end
+    
+    success, result = pcall(function()
+        return require(ReplicatedStorage.Shared.Logger)
+    end)
+    if success then
+        Logger = result
+    else
+        warn("Failed to load Logger:", result)
+        Logger = nil
     end
     
     success, result = pcall(function()
@@ -78,7 +89,7 @@ local function ensureRemoteEventsExist()
     for _, eventName in ipairs(requiredEvents) do
         local event = ReplicatedStorage:FindFirstChild(eventName)
         if not event then
-            print("[DEBUG] Waiting for remote event to be created:", eventName)
+            if Logger then Logger.debug("Waiting for remote event to be created:", eventName) end
             event = ReplicatedStorage:WaitForChild(eventName, 10)
             if not event then
                 warn("Failed to find remote event:", eventName)
@@ -87,7 +98,7 @@ local function ensureRemoteEventsExist()
         end
     end
     
-    print("[DEBUG] All required remote events are available")
+    if Logger then Logger.debug("All required remote events are available") end
     return true
 end
 
@@ -97,8 +108,8 @@ if not ensureRemoteEventsExist() then
 end
 
 local function logDebug(...)
-    if GameConfig and GameConfig.LOG_LEVEL == "debug" then
-        print("[DEBUG][PowerUpShop.server]", ...)
+    if Logger then
+        Logger.debug("[PowerUpShop.server]", ...)
     end
 end
 
@@ -232,7 +243,7 @@ local function handleShopPurchase(player, powerUpIndex)
             end
             
             -- Notify player (server log)
-            print(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips")
+            if Logger then Logger.info(player.Name .. " purchased " .. powerUp.Name .. " for " .. powerUp.Cost .. " HoneyDrips") end
             
             -- Send success feedback to client
             logDebug("Firing PurchaseFeedback to client for success")
@@ -245,7 +256,7 @@ local function handleShopPurchase(player, powerUpIndex)
             end
         else
             -- Notify player (server log)
-            print(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips")
+            if Logger then Logger.warn(player.Name .. " tried to purchase " .. powerUp.Name .. " with HoneyDrips but only has " .. currentHoneyDrips .. " HoneyDrips") end
             
             -- Send insufficient funds feedback to client
             logDebug("Firing PurchaseFeedback to client for insufficient funds")
@@ -263,7 +274,7 @@ local function connectToShopEvent()
     
     local connection = RemoteEventsManager.connectToEvent("PowerUpShopEvent", handleShopPurchase)
     if connection then
-        print("[DEBUG] Successfully connected to PowerUpShopEvent")
+        if Logger then Logger.debug("Successfully connected to PowerUpShopEvent") end
         return true
     else
         warn("Failed to connect to PowerUpShopEvent")
@@ -279,7 +290,7 @@ while retryCount < maxRetries do
         break
     else
         retryCount = retryCount + 1
-        print("[DEBUG] Failed to connect to shop event, retrying... (", retryCount, "/", maxRetries, ")")
+        if Logger then Logger.debug("Failed to connect to shop event, retrying... (", retryCount, "/", maxRetries, ")") end
         task.wait(1) -- Wait before retry
         loadModules() -- Reload modules before retry
     end
@@ -326,7 +337,7 @@ local function processRobuxReceipt(receiptInfo)
                 -- Apply power-up effect if defined
                 if powerUp.Effect then
                     powerUp.Effect(character)
-                    print(player.Name .. " successfully purchased " .. (powerUp.Name or "Unknown PowerUp") .. " with Robux!")
+                    if Logger then Logger.info(player.Name .. " successfully purchased " .. (powerUp.Name or "Unknown PowerUp") .. " with Robux!") end
                 else
                     warn("No Effect defined for power-up with ProductId:", powerUp.ProductId)
                 end

@@ -7,6 +7,8 @@ local player = Players.LocalPlayer
 -- Require the shared configurations with redundancy
 local GameConfig = nil
 local ShopConfig = nil
+local Logger = nil
+
 local function loadConfigs()
     local success, result = pcall(function()
         return require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
@@ -27,6 +29,16 @@ local function loadConfigs()
         warn("Failed to load ShopConfig:", result)
         ShopConfig = nil
     end
+    
+    success, result = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Logger"))
+    end)
+    if success then
+        Logger = result
+    else
+        warn("Failed to load Logger:", result)
+        Logger = nil
+    end
 end
 
 -- Load configs immediately and retry if needed
@@ -44,7 +56,7 @@ local function loadRemoteEvents()
     end)
     if success then
         shopEvent = result
-        print("[DEBUG] Successfully loaded PowerUpShopEvent")
+        if Logger then Logger.debug("Successfully loaded PowerUpShopEvent") end
     else
         warn("Failed to load PowerUpShopEvent:", result)
     end
@@ -54,7 +66,7 @@ local function loadRemoteEvents()
     end)
     if success then
         purchaseFeedbackEvent = result
-        print("[DEBUG] Successfully loaded PurchaseFeedbackEvent")
+        if Logger then Logger.debug("Successfully loaded PurchaseFeedbackEvent") end
     else
         warn("Failed to load PurchaseFeedbackEvent:", result)
     end
@@ -64,7 +76,7 @@ local function loadRemoteEvents()
     end)
     if success then
         PowerUpActiveEvent = result
-        print("[DEBUG] Successfully loaded PowerUpActiveEvent")
+        if Logger then Logger.debug("Successfully loaded PowerUpActiveEvent") end
     else
         warn("Failed to load PowerUpActiveEvent:", result)
     end
@@ -74,7 +86,7 @@ local function loadRemoteEvents()
     end)
     if success then
         PowerUpEndedEvent = result
-        print("[DEBUG] Successfully loaded PowerUpEndedEvent")
+        if Logger then Logger.debug("Successfully loaded PowerUpEndedEvent") end
     else
         warn("Failed to load PowerUpEndedEvent:", result)
     end
@@ -88,8 +100,8 @@ loadRemoteEvents()
 
 -- Debug logging function with redundancy
 local function logDebug(...)
-    if GameConfig and GameConfig.LOG_LEVEL == "debug" then
-        print("[DEBUG][PowerUpShop.client]", ...)
+    if Logger then
+        Logger.debug("[PowerUpShop.client]", ...)
     end
 end
 
@@ -273,7 +285,7 @@ local function connectButton(buttonName, handler)
         return
     end
     
-    print("[DEBUG] Attempting to connect button:", buttonName)
+    if Logger then Logger.debug("Attempting to connect button:", buttonName) end
     
     -- Wait for PlayerGui and MainUI
     local playerGui = player:WaitForChild("PlayerGui", 10)
@@ -293,10 +305,12 @@ local function connectButton(buttonName, handler)
     if not button then
         warn("Button not found:", buttonName)
         -- List available buttons for debugging
-        print("[DEBUG] Available buttons in MainUI:")
-        for _, child in ipairs(mainUI:GetChildren()) do
-            if child:IsA("GuiObject") then
-                print("  - " .. child.Name)
+        if Logger then
+            Logger.debug("Available buttons in MainUI:")
+            for _, child in ipairs(mainUI:GetChildren()) do
+                if child:IsA("GuiObject") then
+                    Logger.debug("  - " .. child.Name)
+                end
             end
         end
         return
@@ -309,7 +323,7 @@ local function connectButton(buttonName, handler)
     
     -- Connect the new handler
     buttonConnections[button] = button.MouseButton1Click:Connect(handler)
-    print("[DEBUG] Successfully connected button:", buttonName)
+    if Logger then Logger.debug("Successfully connected button:", buttonName) end
     return true
 end
 
@@ -323,15 +337,15 @@ local function setupMainUIButtons()
         return
     end
     
-    print("[DEBUG] Setting up shop buttons...")
+    if Logger then Logger.debug("Setting up shop buttons...") end
     
     local connectedCount = 0
     for i, powerUp in ipairs(ShopConfig.POWER_UPS_DATA) do
         local buttonName = powerUp.Name:gsub(" ", "")
-        print("[DEBUG] Looking for button:", buttonName, "for power-up:", powerUp.Name)
+        if Logger then Logger.debug("Looking for button:", buttonName, "for power-up:", powerUp.Name) end
         
         if connectButton(buttonName, function()
-            print("[DEBUG] Button clicked:", buttonName)
+            if Logger then Logger.debug("Button clicked:", buttonName) end
             
             if powerUp.ProductId and powerUp.EnableRobuxPurchase then
                 logDebug(buttonName .. " button clicked, prompting Robux purchase.")
@@ -339,7 +353,7 @@ local function setupMainUIButtons()
                 MarketplaceService:PromptProductPurchase(player, powerUp.ProductId)
             elseif powerUp.Cost and shopEvent then
                 logDebug(buttonName .. " button clicked, purchasing with HoneyDrips.")
-                print("[DEBUG] Firing PowerUpShopEvent with index:", i)
+                if Logger then Logger.debug("Firing PowerUpShopEvent with index:", i) end
                 shopEvent:FireServer(i)
             else
                 logDebug(buttonName .. " button clicked, but no valid purchase method found.")
@@ -349,7 +363,7 @@ local function setupMainUIButtons()
         end
     end
     
-    print("[SUCCESS] Connected " .. connectedCount .. " out of " .. #ShopConfig.POWER_UPS_DATA .. " shop buttons successfully!")
+    if Logger then Logger.info("Connected " .. connectedCount .. " out of " .. #ShopConfig.POWER_UPS_DATA .. " shop buttons successfully!") end
 end
 
 local function clearAllPowerUpTimers()
@@ -467,7 +481,7 @@ end
 
 -- Simple initialization function
 local function initializeShop()
-    print("[DEBUG] Initializing shop...")
+    if Logger then Logger.debug("Initializing shop...") end
     
     -- Load configs if not loaded
     if not GameConfig then
@@ -480,14 +494,14 @@ local function initializeShop()
     -- Load remote events if not loaded
     if not shopEvent or not purchaseFeedbackEvent or not PowerUpActiveEvent or not PowerUpEndedEvent then
         if not loadRemoteEvents() then
-            print("[DEBUG] Failed to load all remote events")
+            if Logger then Logger.debug("Failed to load all remote events") end
             return false
         end
     end
     
     -- Wait for all required components to be available
     if not GameConfig or not ShopConfig or not shopEvent or not purchaseFeedbackEvent or not PowerUpActiveEvent or not PowerUpEndedEvent then
-        print("[DEBUG] Waiting for required components to load...")
+        if Logger then Logger.debug("Waiting for required components to load...") end
         task.wait(0.5)
         return false -- Indicate initialization is not complete
     end
@@ -501,7 +515,7 @@ local function initializeShop()
     -- Setup tooltips
     setupGlobalTooltip()
     
-    print("[DEBUG] Shop initialization completed")
+    if Logger then Logger.debug("Shop initialization completed") end
     return true -- Indicate initialization is complete
 end
 
@@ -540,11 +554,11 @@ local function initializeShopWithRetry()
     
     while retryCount < maxRetries do
         if initializeShop() then
-            print("[DEBUG] Shop initialization successful on attempt", retryCount + 1)
+            if Logger then Logger.debug("Shop initialization successful on attempt", retryCount + 1) end
             break
         else
             retryCount = retryCount + 1
-            print("[DEBUG] Shop initialization failed, retrying... (", retryCount, "/", maxRetries, ")")
+            if Logger then Logger.debug("Shop initialization failed, retrying... (", retryCount, "/", maxRetries, ")") end
             task.wait(1) -- Wait before retry
         end
     end

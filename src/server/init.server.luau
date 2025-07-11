@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
 local ServerStorage = game:GetService("ServerStorage")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 local RemoteEventsManager = require(ReplicatedStorage.Shared.RemoteEventsManager)
 local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
@@ -18,13 +19,11 @@ PlayerDataManager.initialize()
 RemoteEventsManager.createRemoteEvents()
 
 local function logDebug(...)
-    if GameConfig.LOG_LEVEL == "debug" then
-        print("[DEBUG]", ...)
-    end
+    Logger.debug(...)
 end
 
 -- Run unit tests (controlled by GameConfig.RUN_TESTS)
-print("DEBUG: GameConfig.RUN_TESTS =", GameConfig.RUN_TESTS)
+Logger.debug("GameConfig.RUN_TESTS =", GameConfig.RUN_TESTS)
 if GameConfig.RUN_TESTS then
     local RemoteEventsManagerTests = require(game.ServerScriptService.Server.tests.RemoteEventsManagerTests)
     local GameConfigTests = require(game.ServerScriptService.Server.tests.GameConfigTests)
@@ -32,7 +31,7 @@ if GameConfig.RUN_TESTS then
     RemoteEventsManagerTests.runTests()
     GameConfigTests.runTests()
 else
-    print("🧪 Unit tests disabled (GameConfig.RUN_TESTS = false)")
+    Logger.info("🧪 Unit tests disabled (GameConfig.RUN_TESTS = false)")
 end
 
 
@@ -45,7 +44,7 @@ if not SoundsFolder then
     SoundsFolder.Parent = ReplicatedStorage
 end
 
-print("Services initialized")
+Logger.info("Services initialized")
 
 -- Audio Setup
 for i = 1, GameConfig.BUZ_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_buz, _buz2, _buz3
@@ -73,12 +72,12 @@ for i = 1, GameConfig.HONEYDRIP_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_d
     local sound = SoundsFolder:FindFirstChild(soundName)
     if sound then
         table.insert(honeyDripSounds, sound)
-        print("[SOUND] Found honey drip sound:", soundName)
+        Logger.debug("[SOUND] Found honey drip sound:", soundName)
     else
         warn("HoneyDrip sound not found: " .. soundName .. " in Sounds folder.")
     end
 end
-print("[SOUND] Found ", #honeyDripSounds, " HoneyDrip sounds total.")
+Logger.info("[SOUND] Found ", #honeyDripSounds, " HoneyDrip sounds total.")
 
 if #buzSounds == 0 then warn("No buz sounds found in ReplicatedStorage!") end
 if #stingSounds == 0 then warn("No sting sounds found in ReplicatedStorage!") end
@@ -153,7 +152,7 @@ local function createHoneyDrip(initialPosition)
         end
 
         -- Play HoneyDrip pickup sound
-        print("[HONEY DRIP] Attempting to play pickup sound. Available sounds:", #honeyDripSounds)
+        Logger.debug("[HONEY DRIP] Attempting to play pickup sound. Available sounds:", #honeyDripSounds)
         -- REMOVE server-side sound playing for honey drips
         -- Instead, fire event to client to play sound
         RemoteEventsManager.fireToClient("HoneyDripPickup", player)
@@ -214,7 +213,7 @@ if treesFolder then
     end)
 end
 
-print("Server script starting...")
+Logger.info("Server script starting...")
 
 -- Create a StringValue in ReplicatedStorage to display current bee count
 local beeCountDisplay = Instance.new("StringValue")
@@ -360,7 +359,7 @@ local function killBee(bee, isAlive, connection, bodyPosition, bodyGyro, stamina
         end
     end)
     
-    print("Bee died from " .. (deathReason or "unknown cause"))
+            Logger.info("Bee died from " .. (deathReason or "unknown cause"))
 end
 
 -- Function to create and spawn a flying bee that follows the closest player
@@ -719,7 +718,7 @@ local function createFlyingCube(customColor)
             local currentDrips = getHoneyDripCount()
             local maxDrips = getMaxHoneyDrips()
             if currentDrips < maxDrips and math.random(1, 100) <= GameConfig.FLYING_BEE_DRIP_CHANCE then
-                print("[HONEY DRIP] Bee dropped honey drip at position:", primaryPart.Position, "Current:", currentDrips, "/", maxDrips)
+                Logger.debug("[HONEY DRIP] Bee dropped honey drip at position:", primaryPart.Position, "Current:", currentDrips, "/", maxDrips)
                 createHoneyDrip(primaryPart.Position)
             end
         end
@@ -786,10 +785,10 @@ RemoteEventsManager.connectToEvent("SpawnCube", function(player)
 end)
 
 -- Spawn the first cube when the game starts
-print("Starting flying cube spawn...")
+Logger.info("Starting flying cube spawn...")
 local firstBee = createFlyingCube()
 if firstBee then
-    print("First bee created successfully")
+    Logger.info("First bee created successfully")
 else
     warn("Failed to create first bee!")
 end
@@ -842,32 +841,32 @@ local function startHoneyDripSpawner()
             local spawnInterval = GameConfig.BASE_DRIP_SPAWN_INTERVAL - (currentBees * GameConfig.DRIP_SPAWN_DECREASE_PER_BEE)
             spawnInterval = math.max(spawnInterval, 1) -- Minimum 1 second interval
             
-            print("[HONEY DRIP] Auto-spawning honey drip. Current:", currentDrips, "Max:", maxDrips, "Bees:", currentBees, "Interval:", spawnInterval)
+            Logger.debug("[HONEY DRIP] Auto-spawning honey drip. Current:", currentDrips, "Max:", maxDrips, "Bees:", currentBees, "Interval:", spawnInterval)
             createHoneyDrip()
             
             task.wait(spawnInterval)
         else
             -- Wait a bit before checking again if at maximum
-            print("[HONEY DRIP] At maximum honey drips:", currentDrips, "/", maxDrips)
+            Logger.debug("[HONEY DRIP] At maximum honey drips:", currentDrips, "/", maxDrips)
             task.wait(5)
         end
     end
 end
 
 -- Start the auto spawner only after a short delay to ensure Players service is ready
-print("Starting auto spawner...")
+Logger.info("Starting auto spawner...")
 task.delay(1, function()
-    print("Starting auto spawner task...")
+    Logger.info("Starting auto spawner task...")
     task.spawn(startAutoSpawner)
-    print("Auto spawner started")
+    Logger.info("Auto spawner started")
 end)
 
 -- Start the honey drip spawner
-print("Starting honey drip spawner...")
+Logger.info("Starting honey drip spawner...")
 task.delay(2, function()
-    print("Starting honey drip spawner task...")
+    Logger.info("Starting honey drip spawner task...")
     task.spawn(startHoneyDripSpawner)
-    print("Honey drip spawner started")
+    Logger.info("Honey drip spawner started")
 end)
 
 -- Listen for bees being removed from the workspace to update the count immediately
@@ -883,7 +882,7 @@ local spawnBeesRequestEvent = ReplicatedStorage:WaitForChild("SpawnBeesRequestEv
 
 -- Function to spawn multiple bees (called via BindableEvent)
 local function spawnMultipleBees(count, color)
-    print("[DEBUG] spawnMultipleBees called with count:", count, "color:", color, "typeof:", typeof(color))
+    Logger.debug("spawnMultipleBees called with count:", count, "color:", color, "typeof:", typeof(color))
     -- Ensure color is a BrickColor
     local brickColor = color
     if typeof(color) == "string" then

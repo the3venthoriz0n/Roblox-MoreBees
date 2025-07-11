@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 local ShopConfig = require(ReplicatedStorage.Shared.ShopConfig)
 local RemoteEventsManager = require(ReplicatedStorage.Shared.RemoteEventsManager)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
@@ -154,7 +155,7 @@ function PowerUpEffects.HoneyDrip(character, duration)
         local currentDrips = PlayerDataManager.getPlayerHoneyDrips(player)
         local honeyDripAmount = ShopConfig.POWER_UPS_DATA[5].Value or 10 -- Default to 10 if not specified
         PlayerDataManager.updatePlayerHoneyDrips(player, currentDrips + honeyDripAmount)
-        print(player.Name .. " received " .. honeyDripAmount .. " HoneyDrips from Robux purchase!")
+        Logger.info(player.Name .. " received " .. honeyDripAmount .. " HoneyDrips from Robux purchase!")
     end
 end
 
@@ -170,7 +171,7 @@ function PowerUpEffects.clearAllEffects(player)
         return
     end
     
-    print("[DEBUG] Clearing all effects for player:", player.Name)
+    Logger.debug("Clearing all effects for player:", player.Name)
     
     -- Clear all effects for this player
     for effectName, effect in pairs(activeEffects[player]) do
@@ -186,18 +187,18 @@ function PowerUpEffects.clearAllEffects(player)
             
             if effectName == "Speed Boost" and effect and effect.originalSpeed and humanoid then
                 humanoid.WalkSpeed = effect.originalSpeed
-                print("[DEBUG] Reset WalkSpeed to original for:", player.Name)
+                Logger.debug("Reset WalkSpeed to original for:", player.Name)
             elseif effectName == "Health Boost" and effect and effect.originalMaxHealth and humanoid then
                 humanoid.MaxHealth = effect.originalMaxHealth
                 humanoid.Health = math.min(humanoid.Health, effect.originalMaxHealth)
-                print("[DEBUG] Reset MaxHealth to original for:", player.Name)
+                Logger.debug("Reset MaxHealth to original for:", player.Name)
             elseif effectName == "Bee Shield" then
                 player:SetAttribute("BeeShield", false)
                 local forceField = character:FindFirstChildOfClass("ForceField")
                 if forceField then
                     forceField:Destroy()
                 end
-                print("[DEBUG] Removed BeeShield for:", player.Name)
+                Logger.debug("Removed BeeShield for:", player.Name)
             end
         end
         
@@ -209,7 +210,7 @@ function PowerUpEffects.clearAllEffects(player)
     
     -- Clear the player's effects from the table
     activeEffects[player] = nil
-    print("[DEBUG] All effects cleared for player:", player.Name)
+    Logger.debug("All effects cleared for player:", player.Name)
 end
 
 return PowerUpEffects 
