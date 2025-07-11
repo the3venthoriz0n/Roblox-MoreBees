@@ -28,6 +28,13 @@ GameConfig.MAX_SPAWN_INTERVAL = 10 -- Normal spawn interval when at or above min
 GameConfig.BEE_SPAWN_COUNT = 10 -- Number of bees to spawn with power-up
 GameConfig.BEE_SPAWN_COLOR = "Bright red" -- Color of spawned bees for More Bees power-up
 
+-- ============================================================================
+-- BEE LIFESPAN SETTINGS
+-- ============================================================================
+GameConfig.BEE_LIFESPAN_MIN = 30 -- Minimum lifespan in seconds (30 seconds)
+GameConfig.BEE_LIFESPAN_MAX = 60 -- Maximum lifespan in seconds (60 seconds)
+GameConfig.BEE_LIFESPAN_VARIANCE = 15 -- Random variance in seconds (±15 seconds)
+
 
 -- ============================================================================
 -- BEE BEHAVIOR SETTINGS

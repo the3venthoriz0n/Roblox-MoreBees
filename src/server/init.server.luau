@@ -243,6 +243,96 @@ local function updateBeeCount()
     -- debugPrint("Updated bee count:", count)
 end
 
+-- Shared bee death function
+local function killBee(bee, isAlive, connection, bodyPosition, bodyGyro, staminaGui, buzSound, deathReason)
+    if isAlive.Value ~= GameConfig.BEE_ALIVE_VALUE then
+        return -- Bee is already dead
+    end
+    
+    -- Mark bee as dead
+    isAlive.Value = GameConfig.BEE_DEAD_VALUE
+    updateBeeCount()
+    
+    -- Stop all movement and chasing
+    if connection then 
+        connection:Disconnect() 
+        connection = nil
+    end
+    if bodyPosition then 
+        bodyPosition:Destroy() 
+        bodyPosition = nil
+    end
+    if bodyGyro then 
+        bodyGyro:Destroy() 
+        bodyGyro = nil
+    end
+    if staminaGui then 
+        staminaGui:Destroy() 
+        staminaGui = nil
+    end
+    
+    -- Stop buz sound
+    if buzSound then
+        buzSound:Stop()
+        buzSound:Destroy()
+        buzSound = nil
+    end
+    
+    -- CRITICAL FIX: Remove ALL BodyMovers from bee parts to allow natural falling
+    for _, part in ipairs(bee:GetDescendants()) do
+        if part:IsA("BasePart") then
+            -- Remove any existing BodyMovers that might be controlling the part
+            local bodyPosition = part:FindFirstChild("BodyPosition")
+            if bodyPosition then
+                bodyPosition:Destroy()
+            end
+            local bodyGyro = part:FindFirstChild("BodyGyro")
+            if bodyGyro then
+                bodyGyro:Destroy()
+            end
+            local bodyVelocity = part:FindFirstChild("BodyVelocity")
+            if bodyVelocity then
+                bodyVelocity:Destroy()
+            end
+            local bodyAngularVelocity = part:FindFirstChild("BodyAngularVelocity")
+            if bodyAngularVelocity then
+                bodyAngularVelocity:Destroy()
+            end
+            
+            -- Make parts transparent
+            part.Transparency = GameConfig.BEE_DEATH_TRANSPARENCY
+            -- Ensure parts are unanchored so they can fall
+            part.Anchored = false
+            -- Keep collision enabled initially so it doesn't fall through
+            part.CanCollide = true
+            -- Add gravity to make it fall
+            local bodyForce = Instance.new("BodyForce")
+            bodyForce.Force = Vector3.new(0, -part:GetMass() * workspace.Gravity, 0)
+            bodyForce.Parent = part
+        end
+    end
+    
+    -- Anchor the bee to the ground after it falls and then disable collision
+    task.delay(1, function()
+        if bee and bee.Parent then
+            for _, part in ipairs(bee:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = true
+                    -- Now we can safely disable collision
+                    part.CanCollide = false
+                    -- Remove the body force since we don't need it anymore
+                    local bodyForce = part:FindFirstChild("BodyForce")
+                    if bodyForce then
+                        bodyForce:Destroy()
+                    end
+                end
+            end
+        end
+    end)
+    
+    print("Bee died from " .. (deathReason or "unknown cause"))
+end
+
 -- Function to create and spawn a flying bee that follows the closest player
 local function createFlyingCube(customColor)    
     -- Get the bee model from ReplicatedStorage, as per your model's new location
@@ -318,6 +408,44 @@ local function createFlyingCube(customColor)
     isAlive.Name = "IsAlive"
             isAlive.Value = GameConfig.BEE_ALIVE_VALUE -- 1 for alive, 0 for dead
     isAlive.Parent = bee
+
+    -- Add lifespan system
+    local lifespan = math.random(GameConfig.BEE_LIFESPAN_MIN, GameConfig.BEE_LIFESPAN_MAX)
+    lifespan = lifespan + math.random(-GameConfig.BEE_LIFESPAN_VARIANCE, GameConfig.BEE_LIFESPAN_VARIANCE)
+    lifespan = math.max(lifespan, 10) -- Ensure minimum 10 second lifespan
+    
+    -- Create lifespan timer
+    local lifespanTimer = Instance.new("NumberValue")
+    lifespanTimer.Name = "LifespanTimer"
+    lifespanTimer.Value = lifespan
+    lifespanTimer.Parent = bee
+    
+    -- Start lifespan countdown
+    task.spawn(function()
+        local startTime = tick()
+        while bee and bee.Parent and isAlive.Value == GameConfig.BEE_ALIVE_VALUE do
+            local elapsed = tick() - startTime
+            local remaining = math.max(0, lifespan - elapsed)
+            
+            -- Update lifespan timer value
+            if lifespanTimer and lifespanTimer.Parent then
+                lifespanTimer.Value = remaining
+            end
+            
+            -- Check if bee has reached end of lifespan
+            if elapsed >= lifespan then
+                -- Kill the bee due to old age
+                if isAlive.Value == GameConfig.BEE_ALIVE_VALUE then
+                    -- For old age death, we need to handle the case where variables might not be defined yet
+                    -- We'll pass nil for components that might not exist yet, and killBee will handle it gracefully
+                    killBee(bee, isAlive, nil, nil, nil, nil, nil, "old age after " .. math.floor(elapsed) .. " seconds")
+                end
+                break
+            end
+            
+            task.wait(1) -- Check every second
+        end
+    end)
 
     -- Stamina tracking for this bee
     local chaseTime = GameConfig.MAX_CHASE_TIME -- How long this bee has been actively chasing a player
@@ -570,67 +698,9 @@ local function createFlyingCube(customColor)
                             game:GetService("Debris"):AddItem(chosenStingSound, chosenStingSound.TimeLength + 1) -- Clean up sound after playing
                         end
 
-                        -- Stop buz sound if it exists
-                        if buzSound then
-                            buzSound:Stop()
-                            buzSound:Destroy()
-                            buzSound = nil
-                        end
-
-                        -- Mark bee as dead
+                        -- Mark bee as dead from stinging
                         isBeeDead = true
-                        isAlive.Value = GameConfig.BEE_DEAD_VALUE
-                        updateBeeCount()
-
-                        -- Stop all movement and chasing
-                        if connection then 
-                            connection:Disconnect() 
-                            connection = nil
-                        end
-                        if bodyPosition then 
-                            bodyPosition:Destroy() 
-                            bodyPosition = nil
-                        end
-                        if bodyGyro then 
-                            bodyGyro:Destroy() 
-                            bodyGyro = nil
-                        end
-                        if staminaGui then 
-                            staminaGui:Destroy() 
-                            staminaGui = nil
-                        end
-
-                        -- Make bee fall to ground and become transparent
-                        for _, part in ipairs(bee:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                -- Make parts transparent
-                                part.Transparency = GameConfig.BEE_DEATH_TRANSPARENCY
-                                -- Keep collision enabled initially so it doesn't fall through
-                                part.CanCollide = true
-                                -- Add gravity to make it fall
-                                local bodyForce = Instance.new("BodyForce")
-                                bodyForce.Force = Vector3.new(0, -part:GetMass() * workspace.Gravity, 0)
-                                bodyForce.Parent = part
-                            end
-                        end
-
-                        -- Anchor the bee to the ground after it falls and then disable collision
-                        task.delay(1, function()
-                            if bee and bee.Parent then
-                                for _, part in ipairs(bee:GetDescendants()) do
-                                    if part:IsA("BasePart") then
-                                        part.Anchored = true
-                                        -- Now we can safely disable collision
-                                        part.CanCollide = false
-                                        -- Remove the body force since we don't need it anymore
-                                        local bodyForce = part:FindFirstChild("BodyForce")
-                                        if bodyForce then
-                                            bodyForce:Destroy()
-                                        end
-                                    end
-                                end
-                            end
-                        end)
+                        killBee(bee, isAlive, connection, bodyPosition, bodyGyro, staminaGui, buzSound, "stinging player")
                     end
                 end
             end
