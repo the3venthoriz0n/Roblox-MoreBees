@@ -436,9 +436,31 @@ local function createFlyingCube(customColor)
             if elapsed >= lifespan then
                 -- Kill the bee due to old age
                 if isAlive.Value == GameConfig.BEE_ALIVE_VALUE then
-                    -- For old age death, we need to handle the case where variables might not be defined yet
-                    -- We'll pass nil for components that might not exist yet, and killBee will handle it gracefully
-                    killBee(bee, isAlive, nil, nil, nil, nil, nil, "old age after " .. math.floor(elapsed) .. " seconds")
+                    -- For old age death, we need to find the stamina GUI and other components
+                    -- Find stamina GUI from the bee model
+                    local staminaGui = nil
+                    local buzSound = nil
+                    local bodyPosition = nil
+                    local bodyGyro = nil
+                    
+                    -- Find the primary part to locate components
+                    local primaryPart = bee:FindFirstChild("wing") or bee.PrimaryPart or bee:FindFirstChildWhichIsA("BasePart")
+                    if primaryPart then
+                        -- Find stamina GUI
+                        staminaGui = primaryPart:FindFirstChild("StaminaDisplay")
+                        -- Find buz sound
+                        for _, child in ipairs(primaryPart:GetChildren()) do
+                            if child:IsA("Sound") then
+                                buzSound = child
+                                break
+                            end
+                        end
+                        -- Find body movers
+                        bodyPosition = primaryPart:FindFirstChild("BodyPosition")
+                        bodyGyro = primaryPart:FindFirstChild("BodyGyro")
+                    end
+                    
+                    killBee(bee, isAlive, nil, bodyPosition, bodyGyro, staminaGui, buzSound, "old age after " .. math.floor(elapsed) .. " seconds")
                 end
                 break
             end
@@ -566,6 +588,12 @@ local function createFlyingCube(customColor)
             return
         end
 
+        -- Check if bee is still alive - if not, stop all activity
+        if isAlive.Value ~= GameConfig.BEE_ALIVE_VALUE then
+            if connection then connection:Disconnect() end
+            return
+        end
+
         local targetPlayer = getClosestPlayer()
         local playerRootPart = nil
         if targetPlayer and targetPlayer.Character then
@@ -601,12 +629,14 @@ local function createFlyingCube(customColor)
         bodyPosition.P = (10 * BODY_MOVER_MULTIPLIER) * currentSpeedMultiplier
         bodyPosition.D = (1 * BODY_MOVER_MULTIPLIER) * currentSpeedMultiplier
 
-        -- Update stamina display
-        staminaText.Text = string.format("Stamina: %.2f / %d", chaseTime, GameConfig.MAX_CHASE_TIME)
-        if chaseTime <= 0 then
-            staminaText.TextColor3 = Color3.new(1, 0, 0) -- Red when tired
-        else
-            staminaText.TextColor3 = Color3.new(1, 1, 0) -- Yellow when not tired
+        -- Update stamina display only if bee is alive and stamina GUI exists
+        if staminaGui and staminaGui.Parent then
+            staminaText.Text = string.format("Stamina: %.2f / %d", chaseTime, GameConfig.MAX_CHASE_TIME)
+            if chaseTime <= 0 then
+                staminaText.TextColor3 = Color3.new(1, 0, 0) -- Red when tired
+            else
+                staminaText.TextColor3 = Color3.new(1, 1, 0) -- Yellow when not tired
+            end
         end
 
         if shouldAttackPlayer and playerRootPart then
@@ -652,7 +682,7 @@ local function createFlyingCube(customColor)
         bodyPosition.Position = currentTargetPos
         bodyGyro.CFrame = CFrame.lookAt(primaryPart.Position, currentTargetPos)
 
-        -- Check for HoneyDrip drop from flying bee
+        -- Check for HoneyDrip drop from flying bee - ONLY if bee is alive
         local now = tick()
         if now - lastDripDropAttemptTime > GameConfig.FLYING_BEE_DRIP_CHECK_INTERVAL then
             lastDripDropAttemptTime = now
