@@ -8,7 +8,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local PlayerDataManager = require(game.ServerScriptService.Server.PlayerDataManager)
 local RemoteEventsManager = require(ReplicatedStorage.Shared.RemoteEventsManager)
 local PowerUpEffects = require(game.ServerScriptService.Server.PowerUpEffects)
-local SoundsFolder = ServerStorage:FindFirstChild("Sounds")
+local SoundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
 local buzSounds = {}
 local stingSounds = {}
 local honeyDripSounds = {}
@@ -38,11 +38,11 @@ end
 
 
 if not SoundsFolder then
-    warn("Sounds folder not found in ServerStorage. Please ensure your audio assets are placed in ServerStorage/Sounds.")
+    warn("Sounds folder not found in ReplicatedStorage. Please ensure your audio assets are placed in ReplicatedStorage/Sounds.")
     -- Create a dummy folder or handle gracefully if sounds are missing
     SoundsFolder = Instance.new("Folder")
     SoundsFolder.Name = "Sounds"
-    SoundsFolder.Parent = ServerStorage
+    SoundsFolder.Parent = ReplicatedStorage
 end
 
 print("Services initialized")
@@ -69,18 +69,20 @@ end
 -- debugPrint("Found ", #stingSounds, " sting sounds.")
 
 for i = 1, GameConfig.HONEYDRIP_SOUND_COUNT do -- Assuming robloxMoreBeesAudio_drip, _drip2, _drip3
-    local sound = SoundsFolder:FindFirstChild("robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or ""))
+    local soundName = "robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or "")
+    local sound = SoundsFolder:FindFirstChild(soundName)
     if sound then
         table.insert(honeyDripSounds, sound)
+        print("[SOUND] Found honey drip sound:", soundName)
     else
-        warn("HoneyDrip sound not found: robloxMoreBeesAudio_drip" .. (i > 1 and tostring(i) or "") .. " in Sounds folder.")
+        warn("HoneyDrip sound not found: " .. soundName .. " in Sounds folder.")
     end
 end
--- debugPrint("Found ", #honeyDripSounds, " HoneyDrip sounds.")
+print("[SOUND] Found ", #honeyDripSounds, " HoneyDrip sounds total.")
 
-if #buzSounds == 0 then warn("No buz sounds found in ServerStorage!") end
-if #stingSounds == 0 then warn("No sting sounds found in ServerStorage!") end
-if #honeyDripSounds == 0 then warn("No HoneyDrip sounds found in ServerStorage!") end
+if #buzSounds == 0 then warn("No buz sounds found in ReplicatedStorage!") end
+if #stingSounds == 0 then warn("No sting sounds found in ReplicatedStorage!") end
+if #honeyDripSounds == 0 then warn("No HoneyDrip sounds found in ReplicatedStorage!") end
 
 -- All spawn control and game constants are now in GameConfig
 
@@ -103,6 +105,9 @@ local function createHoneyDrip(initialPosition)
     newDrip.Anchored = false
     newDrip.CanCollide = true -- So it can land on the ground
     newDrip.Transparency = GameConfig.HONEYDRIP_TRANSPARENCY -- Ensure it's visible
+    
+    -- Set collision group to prevent collision with players
+    newDrip.CollisionGroup = GameConfig.HONEYDRIP_COLLISION_GROUP
 
     local spawnPosition = initialPosition or Vector3.new(0, 0, 0) -- Default if no initialPosition
 
@@ -148,13 +153,10 @@ local function createHoneyDrip(initialPosition)
         end
 
         -- Play HoneyDrip pickup sound
-        if #honeyDripSounds > 0 then
-            local chosenDripSound = honeyDripSounds[math.random(1, #honeyDripSounds)]:Clone()
-            chosenDripSound.Parent = newDrip
-            chosenDripSound.Volume = GameConfig.SOUND_VOLUME
-            chosenDripSound:Play()
-            game:GetService("Debris"):AddItem(chosenDripSound, chosenDripSound.TimeLength)
-        end
+        print("[HONEY DRIP] Attempting to play pickup sound. Available sounds:", #honeyDripSounds)
+        -- REMOVE server-side sound playing for honey drips
+        -- Instead, fire event to client to play sound
+        RemoteEventsManager.fireToClient("HoneyDripPickup", player)
 
         -- Add HoneyDrips to player
         local currentHoneyDrips = PlayerDataManager.getPlayerHoneyDrips(player)
@@ -183,10 +185,14 @@ local function setupCollisionGroups()
     PhysicsService:RegisterCollisionGroup(GameConfig.CUBE_COLLISION_GROUP)
     PhysicsService:RegisterCollisionGroup(GameConfig.PLAYER_COLLISION_GROUP)
     PhysicsService:RegisterCollisionGroup(GameConfig.TREE_COLLISION_GROUP)
+    PhysicsService:RegisterCollisionGroup(GameConfig.HONEYDRIP_COLLISION_GROUP)
 
     PhysicsService:CollisionGroupSetCollidable(GameConfig.BEEHIVE_COLLISION_GROUP, GameConfig.CUBE_COLLISION_GROUP, false)
     PhysicsService:CollisionGroupSetCollidable(GameConfig.CUBE_COLLISION_GROUP, GameConfig.PLAYER_COLLISION_GROUP, false)
     PhysicsService:CollisionGroupSetCollidable(GameConfig.CUBE_COLLISION_GROUP, GameConfig.TREE_COLLISION_GROUP, false)
+    
+    -- Honey drips don't collide with players but can collide with other objects
+    PhysicsService:CollisionGroupSetCollidable(GameConfig.HONEYDRIP_COLLISION_GROUP, GameConfig.PLAYER_COLLISION_GROUP, false)
 end
 
 -- Recursively assign collision group to all parts in a folder

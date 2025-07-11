@@ -40,6 +40,9 @@ function RemoteEventsManager.createRemoteEvents()
     else
         logDebug("Bindable event already exists: SpawnBeesRequestEvent")
     end
+    
+    -- Add HoneyDripPickupEvent for client-side pickup sound
+    createOrGetEvent("HoneyDripPickupEvent")
 end
 
 -- Get a specific remote event by name

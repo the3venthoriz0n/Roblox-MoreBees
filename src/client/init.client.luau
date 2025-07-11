@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
+local Debris = game:GetService("Debris")
 
 local RemoteEventsManager = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEventsManager"))
 
@@ -150,4 +151,55 @@ player.CharacterAdded:Connect(setupRespawnTimerForCharacter)
 if player.Character then
     setupRespawnTimerForCharacter(player.Character)
 end
+
+
+
+
+
+-- Honey drip pickup sound logic (client-side)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local player = Players.LocalPlayer
+
+print("[CLIENT] HoneyDripPickupEvent handler loaded (init.client.luau)")
+
+local function playHoneyDripPickupSound()
+    print("[CLIENT] Received HoneyDripPickupEvent")
+    local soundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
+    if not soundsFolder then print("[CLIENT] No Sounds folder in ReplicatedStorage") return end
+    local dripSounds = {}
+    for _, obj in ipairs(soundsFolder:GetChildren()) do
+        if obj:IsA("Sound") and obj.Name:match("robloxMoreBeesAudio_drip") then
+            table.insert(dripSounds, obj)
+        end
+    end
+    print("[CLIENT] Found drip sounds:", #dripSounds)
+    if #dripSounds == 0 then return end
+    local chosen = dripSounds[math.random(1, #dripSounds)]:Clone()
+    chosen.Volume = 8
+    chosen.EmitterSize = 10
+    chosen.MaxDistance = 100
+
+    local char = player.Character or player.CharacterAdded:Wait()
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        local att = Instance.new("Attachment")
+        att.Parent = root
+        chosen.Parent = att
+        print("[CLIENT] Playing sound at HumanoidRootPart (3D)")
+        chosen:Play()
+        Debris:AddItem(chosen, chosen.TimeLength)
+        Debris:AddItem(att, chosen.TimeLength)
+    else
+        -- Fallback: play as 2D sound
+        chosen.Parent = workspace
+        print("[CLIENT] Playing sound as 2D (no HumanoidRootPart found)")
+        chosen:Play()
+        Debris:AddItem(chosen, chosen.TimeLength)
+    end
+end
+
+local honeyDripPickupEvent = ReplicatedStorage:WaitForChild("HoneyDripPickupEvent")
+honeyDripPickupEvent.OnClientEvent:Connect(playHoneyDripPickupSound)
 

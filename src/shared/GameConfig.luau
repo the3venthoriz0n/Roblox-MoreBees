@@ -92,6 +92,7 @@ GameConfig.BEE_COLLISION_GROUP = "BeeGroup"
 GameConfig.BEEHIVE_COLLISION_GROUP = "BeeHiveGroup"
 GameConfig.CUBE_COLLISION_GROUP = "FlyingGroup"
 GameConfig.TREE_COLLISION_GROUP = "TreeGroup" -- Added for tree collision group
+GameConfig.HONEYDRIP_COLLISION_GROUP = "HoneyDripGroup" -- Added for honey drip collision group
 
 -- ============================================================================
 -- AUDIO SETTINGS
@@ -114,7 +115,7 @@ GameConfig.STAMINA_TEXT_STROKE_TRANSPARENCY = 0 -- Text stroke transparency for 
 -- ============================================================================
 GameConfig.HEAL_FLASH_DURATION = 0.1 -- seconds for heal flash effect
 GameConfig.HEAL_FLASH_COLOR = "Bright green" -- color for heal flash
-GameConfig.HONEYDRIP_PICKUP_DELAY = 0.1 -- delay before destroying HoneyDrip after pickup
+GameConfig.HONEYDRIP_PICKUP_DELAY = 0 -- delay before destroying HoneyDrip after pickup
 
 -- ============================================================================
 -- UI SETTINGS
