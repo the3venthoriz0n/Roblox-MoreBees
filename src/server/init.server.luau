@@ -680,7 +680,7 @@ local function startAutoSpawner()
         local spawnInterval = currentBees < minRequiredBees and GameConfig.MIN_SPAWN_INTERVAL or GameConfig.MAX_SPAWN_INTERVAL
         
         -- Always spawn if below minimum, otherwise spawn at max interval
-        if currentBees < GameConfig.MAX_HONEYDRIPS then
+        if currentBees < minRequiredBees then
             -- debugPrint("Auto-spawning bee. Current:", currentBees, "Minimum Required:", minRequiredBees, "Interval:", spawnInterval)
             createFlyingCube()
         else
@@ -695,12 +695,54 @@ local function startAutoSpawner()
     end
 end
 
+-- Function to get current honey drip count
+local function getHoneyDripCount()
+    local count = 0
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj.Name == "HoneyDrip" then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- Automatic honey drip spawner
+local function startHoneyDripSpawner()
+    while true do
+        local currentDrips = getHoneyDripCount()
+        
+        -- Only spawn if below maximum
+        if currentDrips < GameConfig.MAX_HONEYDRIPS then
+            -- Calculate spawn interval based on current bee count
+            local currentBees = getBeeCount()
+            local spawnInterval = GameConfig.BASE_DRIP_SPAWN_INTERVAL - (currentBees * GameConfig.DRIP_SPAWN_DECREASE_PER_BEE)
+            spawnInterval = math.max(spawnInterval, 1) -- Minimum 1 second interval
+            
+            -- debugPrint("Spawning honey drip. Current:", currentDrips, "Max:", GameConfig.MAX_HONEYDRIPS, "Interval:", spawnInterval)
+            createHoneyDrip()
+            
+            task.wait(spawnInterval)
+        else
+            -- Wait a bit before checking again if at maximum
+            task.wait(5)
+        end
+    end
+end
+
 -- Start the auto spawner only after a short delay to ensure Players service is ready
 print("Starting auto spawner...")
 task.delay(1, function()
     print("Starting auto spawner task...")
     task.spawn(startAutoSpawner)
     print("Auto spawner started")
+end)
+
+-- Start the honey drip spawner
+print("Starting honey drip spawner...")
+task.delay(2, function()
+    print("Starting honey drip spawner task...")
+    task.spawn(startHoneyDripSpawner)
+    print("Honey drip spawner started")
 end)
 
 -- Listen for bees being removed from the workspace to update the count immediately

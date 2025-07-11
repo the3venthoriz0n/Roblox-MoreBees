@@ -112,7 +112,7 @@ GameConfig.HONEYDRIP_PICKUP_DELAY = 0.1 -- delay before destroying HoneyDrip aft
 -- UI SETTINGS
 -- ============================================================================
 GameConfig.FEEDBACK_DISPLAY_TIME = 1 -- seconds to show purchase feedback
-GameConfig.TOOLTIP_DELAY = 0.5 -- seconds to wait before showing tooltip on hover
+GameConfig.TOOLTIP_DELAY = 1 -- seconds to wait before showing tooltip on hover
 
 -- ============================================================================
 -- TIMING SETTINGS
